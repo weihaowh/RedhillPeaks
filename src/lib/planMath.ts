@@ -23,25 +23,60 @@ export function polygonCentroid(points: Vec2[]): Vec2 {
     cy += (y1 + y2) * f
   }
   a *= 0.5
+  if (Math.abs(a) < 1e-9) {
+    const n = points.length || 1
+    return [points.reduce((t, p) => t + p[0], 0) / n, points.reduce((t, p) => t + p[1], 0) / n]
+  }
   return [cx / (6 * a), cy / (6 * a)]
 }
 
 export const roomAnchor = (room: Room): Vec2 => room.labelAt ?? polygonCentroid(room.polygon)
 
 export function planBounds(plan: FloorPlan) {
+  const pts: Vec2[] = [...plan.rooms.flatMap((r) => r.polygon), ...plan.walls.flatMap((w) => [w.start, w.end])]
+  if (!pts.length && plan.underlay) {
+    const u = plan.underlay
+    pts.push([u.x, u.y], [u.x + u.width, u.y + u.height])
+  }
+  if (!pts.length) pts.push([0, 0], [10, 8])
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
-  for (const room of plan.rooms) {
-    for (const [x, y] of room.polygon) {
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x)
-      maxY = Math.max(maxY, y)
-    }
+  for (const [x, y] of pts) {
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
   }
   return { minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 }
+}
+
+export const distance = (a: Vec2, b: Vec2) => Math.hypot(a[0] - b[0], a[1] - b[1])
+
+/** Closest point on segment ab to p, with `t` as the distance from a along the segment. */
+export function closestOnSegment(p: Vec2, a: Vec2, b: Vec2): { point: Vec2; t: number; dist: number } {
+  const dx = b[0] - a[0]
+  const dy = b[1] - a[1]
+  const len = Math.hypot(dx, dy)
+  if (len < 1e-9) return { point: a, t: 0, dist: distance(p, a) }
+  const u = Math.min(Math.max(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (len * len), 0), 1)
+  const point: Vec2 = [a[0] + dx * u, a[1] + dy * u]
+  return { point, t: u * len, dist: distance(p, point) }
+}
+
+/** Intersection of the infinite line through `origin` along `dir` with segment ab, if any. */
+export function rayHitSegment(origin: Vec2, dir: Vec2, a: Vec2, b: Vec2): Vec2 | null {
+  const ex = b[0] - a[0]
+  const ey = b[1] - a[1]
+  const denom = dir[0] * ey - dir[1] * ex
+  if (Math.abs(denom) < 1e-9) return null
+  const wx = a[0] - origin[0]
+  const wy = a[1] - origin[1]
+  const s = (wx * ey - wy * ex) / denom
+  const u = (wx * dir[1] - wy * dir[0]) / denom
+  if (u < -1e-6 || u > 1 + 1e-6) return null
+  return [origin[0] + dir[0] * s, origin[1] + dir[1] * s]
 }
 
 export const wallLength = (w: Wall) => Math.hypot(w.end[0] - w.start[0], w.end[1] - w.start[1])

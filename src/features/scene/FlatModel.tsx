@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { FloorPlan, Room, Wall } from '../../types/plan'
 import { useAppStore } from '../../store/useAppStore'
-import { alongWall, polygonArea, roomAnchor, wallAngle, wallPieces } from '../../lib/planMath'
+import { alongWall, polygonArea, roomAnchor, wallAngle, wallLength, wallPieces } from '../../lib/planMath'
 import { defaultFinish, finishMaterial } from './finishes'
 
 export const CUTAWAY_HEIGHT = 1.1
@@ -36,7 +36,7 @@ export function FlatModel({ plan }: { plan: FloorPlan }) {
       {plan.rooms.map((room) => (
         <RoomFloor key={room.id} room={room} slabMaterial={materials.slab} />
       ))}
-      {plan.walls.map((wall) => (
+      {plan.walls.filter((wall) => wallLength(wall) > 0.005).map((wall) => (
         <WallMesh
           key={wall.id}
           wall={wall}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { redhillPeaks } from './data/redhillPeaks'
+import { usePlanStore } from './store/usePlanStore'
 import { useAppStore } from './store/useAppStore'
 import { TopBar } from './components/TopBar'
 import { LeftPanel } from './components/LeftPanel'
@@ -12,7 +12,7 @@ const Scene3D = lazy(() => import('./features/scene/Scene3D'))
 export default function App() {
   const mode = useAppStore((s) => s.mode)
   const theme = useAppStore((s) => s.theme)
-  const plan = redhillPeaks
+  const plan = usePlanStore((s) => s.plan)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')

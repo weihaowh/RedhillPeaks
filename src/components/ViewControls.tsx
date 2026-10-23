@@ -1,6 +1,7 @@
-import { BrickWall, Gauge, Layers, Maximize2, RotateCcw, Tag } from 'lucide-react'
+import { BrickWall, Gauge, RotateCcw, Tag } from 'lucide-react'
 import clsx from 'clsx'
 import { useAppStore } from '../store/useAppStore'
+import { PlanToolbar } from '../features/floorplan/PlanToolbar'
 
 export function ViewControls() {
   const mode = useAppStore((s) => s.mode)
@@ -12,32 +13,12 @@ export function ViewControls() {
   const setWallMode = useAppStore((s) => s.setWallMode)
   const quality = useAppStore((s) => s.quality)
   const setQuality = useAppStore((s) => s.setQuality)
-  const opacity = useAppStore((s) => s.underlayOpacity)
-  const setOpacity = useAppStore((s) => s.setUnderlayOpacity)
   const resetView = useAppStore((s) => s.resetView)
 
   return (
     <div className="glass absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto p-1.5">
       {mode === 'plan' ? (
-        <>
-          <label className="flex items-center gap-2 px-2 text-xs text-muted">
-            <Layers size={14} />
-            <span className="whitespace-nowrap">HDB plan</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={opacity}
-              onChange={(e) => setOpacity(Number(e.target.value))}
-              className="w-28 accent-[rgb(var(--accent))]"
-            />
-          </label>
-          <Divider />
-          <button type="button" className="chip" onClick={resetView}>
-            <Maximize2 size={14} /> Fit
-          </button>
-        </>
+        <PlanToolbar />
       ) : (
         <>
           <Toggle on={showLabels} onClick={toggleLabels} icon={<Tag size={14} />} label="Labels" />

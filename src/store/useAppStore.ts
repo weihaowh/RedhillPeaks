@@ -13,6 +13,9 @@ interface AppState {
   leftTab: LeftTab
   leftOpen: boolean
   selectedRoomId: string | null
+  selectedWallId: string | null
+  /** Selected door/window, with the wall it sits in. */
+  selectedOpening: { wallId: string; openingId: string } | null
   hoveredRoomId: string | null
   /** Per-room floor finish overrides; rooms without one use their kind's default. */
   floorFinish: Record<string, string>
@@ -30,6 +33,9 @@ interface AppState {
   setLeftTab: (tab: LeftTab) => void
   setLeftOpen: (open: boolean) => void
   selectRoom: (id: string | null) => void
+  selectWall: (id: string | null) => void
+  selectOpening: (sel: { wallId: string; openingId: string } | null) => void
+  clearSelection: () => void
   setHoveredRoom: (id: string | null) => void
   setFloorFinish: (roomId: string, finishId: string) => void
   setWallPaint: (hex: string) => void
@@ -51,6 +57,8 @@ export const useAppStore = create<AppState>()(
       leftTab: 'rooms',
       leftOpen: typeof window === 'undefined' || window.innerWidth >= 768,
       selectedRoomId: null,
+      selectedWallId: null,
+      selectedOpening: null,
       hoveredRoomId: null,
       floorFinish: {},
       wallPaint: '#f4f1ea',
@@ -65,7 +73,10 @@ export const useAppStore = create<AppState>()(
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setLeftTab: (leftTab) => set({ leftTab, leftOpen: true }),
       setLeftOpen: (leftOpen) => set({ leftOpen }),
-      selectRoom: (selectedRoomId) => set({ selectedRoomId }),
+      selectRoom: (selectedRoomId) => set({ selectedRoomId, selectedWallId: null, selectedOpening: null }),
+      selectWall: (selectedWallId) => set({ selectedWallId, selectedRoomId: null, selectedOpening: null }),
+      selectOpening: (selectedOpening) => set({ selectedOpening, selectedRoomId: null, selectedWallId: null }),
+      clearSelection: () => set({ selectedRoomId: null, selectedWallId: null, selectedOpening: null }),
       setHoveredRoom: (hoveredRoomId) => set({ hoveredRoomId }),
       setFloorFinish: (roomId, finishId) => set((s) => ({ floorFinish: { ...s.floorFinish, [roomId]: finishId } })),
       setWallPaint: (wallPaint) => set({ wallPaint }),
@@ -74,7 +85,7 @@ export const useAppStore = create<AppState>()(
       setWallMode: (wallMode) => set({ wallMode }),
       setQuality: (quality) => set({ quality }),
       setUnderlayOpacity: (underlayOpacity) => set({ underlayOpacity }),
-      resetView: () => set((s) => ({ selectedRoomId: null, viewResetNonce: s.viewResetNonce + 1 })),
+      resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, viewResetNonce: s.viewResetNonce + 1 })),
     }),
     {
       name: 'redhill-peaks-studio',

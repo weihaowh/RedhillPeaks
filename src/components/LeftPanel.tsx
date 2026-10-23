@@ -96,7 +96,7 @@ function RoomsTab({ plan }: { plan: FloorPlan }) {
       <div className="flex gap-2 rounded-xl bg-ink/5 p-3 text-xs leading-relaxed text-muted">
         <Info size={14} className="mt-0.5 shrink-0" />
         <p>
-          Traced from your HDB plan (BM C73 P2) along the wall centre-lines, accurate to about ±50 mm. You will be able to fine-tune it with the tracing editor in Phase 2.
+          Room areas are measured along wall centre-lines. Switch to 2D Plan to edit the trace, or to upload a different floor plan.
         </p>
       </div>
     </div>

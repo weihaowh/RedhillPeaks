@@ -40,7 +40,10 @@ export interface Room {
 }
 
 export interface Underlay {
-  src: string
+  /** Static image URL (bundled plans). */
+  src?: string
+  /** Uploaded image kept in IndexedDB (see lib/assets). */
+  assetId?: string
   x: number
   y: number
   width: number
