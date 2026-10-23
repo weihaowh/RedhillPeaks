@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: 236 237 239;
+  --panel: 255 255 255;
+  --ink: 24 26 29;
+  --muted: 108 113 121;
+  --line: 226 228 231;
+  --accent: 190 108 60;
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: 17 19 22;
+  --panel: 27 30 34;
+  --ink: 236 237 239;
+  --muted: 148 153 161;
+  --line: 46 50 56;
+  --accent: 222 142 92;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-canvas text-ink font-sans antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-line/80 bg-panel/85 shadow-float backdrop-blur-xl;
+  }
+  .icon-btn {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted transition hover:bg-ink/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .chip {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition hover:text-ink;
+  }
+  .chip-on {
+    @apply bg-panel text-ink shadow-sm ring-1 ring-line;
+  }
+  .label-pill {
+    @apply pointer-events-none select-none whitespace-nowrap rounded-full border border-line/80 bg-panel/90 px-2.5 py-1 text-[11px] font-medium text-ink shadow-float backdrop-blur;
+  }
+}
