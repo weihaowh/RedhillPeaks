@@ -1,10 +1,24 @@
-import { BrickWall, Gauge, RotateCcw, Tag } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BrickWall, Camera, Gauge, LogOut, Redo2, RotateCcw, Sun, Tag, Undo2 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAppStore } from '../store/useAppStore'
+import { useDesignStore } from '../store/useDesignStore'
 import { PlanToolbar } from '../features/floorplan/PlanToolbar'
+import { SunPanel } from '../features/scene/SunPanel'
+import { ScreenshotPanel } from '../features/scene/ScreenshotPanel'
+import { formatHour } from '../lib/sun'
+
+type Panel = 'sun' | 'shot' | null
+
+const QUALITY_HINT = {
+  draft: 'Fastest. Best for phones and older laptops.',
+  high: 'Soft ambient shading and smooth edges.',
+  ultra: 'Soft shadows and light glow. Needs a strong GPU.',
+}
 
 export function ViewControls() {
   const mode = useAppStore((s) => s.mode)
+  const setMode = useAppStore((s) => s.setMode)
   const showLabels = useAppStore((s) => s.showLabels)
   const toggleLabels = useAppStore((s) => s.toggleLabels)
   const showStructural = useAppStore((s) => s.showStructural)
@@ -14,25 +28,81 @@ export function ViewControls() {
   const quality = useAppStore((s) => s.quality)
   const setQuality = useAppStore((s) => s.setQuality)
   const resetView = useAppStore((s) => s.resetView)
+  const hour = useAppStore((s) => s.sun.hour)
+  const canUndo = useDesignStore((s) => s.past.length > 0)
+  const canRedo = useDesignStore((s) => s.future.length > 0)
+  const undo = useDesignStore((s) => s.undo)
+  const redo = useDesignStore((s) => s.redo)
+  const [panel, setPanel] = useState<Panel>(null)
+  const root = useRef<HTMLDivElement>(null)
+  const walking = mode === 'walk'
+
+  // Close the popover on outside click or when leaving the 3D views.
+  useEffect(() => {
+    if (!panel) return
+    const onDown = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setPanel(null)
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+  }, [panel])
+  useEffect(() => setPanel(null), [mode])
+
+  const toggle = (p: Exclude<Panel, null>) => setPanel((cur) => (cur === p ? null : p))
 
   return (
-    <div className="glass absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto p-1.5">
-      {mode === 'plan' ? (
-        <PlanToolbar />
-      ) : (
-        <>
-          <Toggle on={showLabels} onClick={toggleLabels} icon={<Tag size={14} />} label="Labels" />
-          <Toggle on={showStructural} onClick={toggleStructural} icon={<BrickWall size={14} />} label="Structural" />
-          <Divider />
-          <Segment value={wallMode} onChange={setWallMode} options={[['full', 'Full walls'], ['cutaway', 'Cutaway']]} />
-          <Divider />
-          <Segment value={quality} onChange={setQuality} icon={<Gauge size={14} />} options={[['draft', 'Draft'], ['high', 'High']]} />
-          <Divider />
-          <button type="button" className="chip" onClick={resetView} title="Reset camera">
-            <RotateCcw size={14} />
-          </button>
-        </>
+    <div ref={root}>
+      {panel && mode !== 'plan' && (
+        <div className="glass absolute bottom-[4.25rem] left-1/2 z-30 -translate-x-1/2">
+          {panel === 'sun' ? <SunPanel /> : <ScreenshotPanel onDone={() => setPanel(null)} />}
+        </div>
       )}
+      <div className="glass absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto p-1.5">
+        {mode === 'plan' ? (
+          <PlanToolbar />
+        ) : (
+          <>
+            <button type="button" className="chip" title="Undo design change (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
+              <Undo2 size={14} />
+            </button>
+            <button type="button" className="chip" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo}>
+              <Redo2 size={14} />
+            </button>
+            <Divider />
+            {!walking && (
+              <>
+                <Toggle on={showLabels} onClick={toggleLabels} icon={<Tag size={14} />} label="Labels" />
+                <Toggle on={showStructural} onClick={toggleStructural} icon={<BrickWall size={14} />} label="Structural" />
+                <Divider />
+                <Segment value={wallMode} onChange={setWallMode} options={[['full', 'Full walls'], ['cutaway', 'Cutaway']]} />
+                <Divider />
+              </>
+            )}
+            <button type="button" className={clsx('chip whitespace-nowrap', panel === 'sun' && 'chip-on')} onClick={() => toggle('sun')} title="Time of day and lighting">
+              <Sun size={14} /> {formatHour(hour)}
+            </button>
+            <Divider />
+            <Segment
+              value={quality}
+              onChange={setQuality}
+              icon={<Gauge size={14} />}
+              options={[['draft', 'Draft'], ['high', 'High'], ['ultra', 'Ultra']]}
+              titles={QUALITY_HINT}
+            />
+            <Divider />
+            <button type="button" className={clsx('chip', panel === 'shot' && 'chip-on')} onClick={() => toggle('shot')} title="Save a picture">
+              <Camera size={14} />
+            </button>
+            {walking ? (
+              <button type="button" className="chip whitespace-nowrap" onClick={() => setMode('orbit')} title="Back to the overview (Esc)">
+                <LogOut size={14} /> <span className="hidden sm:inline">Exit</span>
+              </button>
+            ) : (
+              <button type="button" className="chip" onClick={resetView} title="Reset camera">
+                <RotateCcw size={14} />
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -49,12 +119,24 @@ function Toggle({ on, onClick, icon, label }: { on: boolean; onClick: () => void
   )
 }
 
-function Segment<T extends string>({ value, onChange, options, icon }: { value: T; onChange: (v: T) => void; options: [T, string][]; icon?: React.ReactNode }) {
+function Segment<T extends string>({
+  value,
+  onChange,
+  options,
+  icon,
+  titles,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: [T, string][]
+  icon?: React.ReactNode
+  titles?: Partial<Record<T, string>>
+}) {
   return (
     <div className="flex items-center gap-0.5">
       {icon && <span className="pl-1.5 text-muted">{icon}</span>}
       {options.map(([v, label]) => (
-        <button key={v} type="button" onClick={() => onChange(v)} className={clsx('chip whitespace-nowrap', value === v && 'chip-on')}>
+        <button key={v} type="button" title={titles?.[v]} onClick={() => onChange(v)} className={clsx('chip whitespace-nowrap', value === v && 'chip-on')}>
           {label}
         </button>
       ))}

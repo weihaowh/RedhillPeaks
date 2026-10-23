@@ -5,7 +5,10 @@ import { useAppStore } from '../../store/useAppStore'
 import { usePlanStore } from '../../store/usePlanStore'
 import { useEditorStore } from '../../store/useEditorStore'
 import { useAssetUrl } from '../../lib/assets'
-import { closestOnSegment, distance, planBounds, polygonArea, roomAnchor, wallLength, wallOutline } from '../../lib/planMath'
+import { useDesignStore } from '../../store/useDesignStore'
+import { footprint } from '../../lib/furnitureMath'
+import { catalogEntry } from '../furniture/catalog'
+import { closestOnSegment, distance, doorSwing, planBounds, polygonArea, roomAnchor, wallLength, wallOutline } from '../../lib/planMath'
 import { addOpening, addRoom, addWall, deleteOpening, deleteRoom, deleteWall, movePoint, newId, updateOpening } from '../../lib/planEdits'
 import { snapPoint, type Snap } from '../../lib/snapping'
 import { KIND_COLOR } from '../../components/LeftPanel'
@@ -80,6 +83,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const windowWidth = useEditorStore((s) => s.windowWidth)
 
   const edit = usePlanStore((s) => s.edit)
+  const items = useDesignStore((s) => s.design.items)
   const underlayUrl = useAssetUrl(plan.underlay?.assetId) ?? plan.underlay?.src
 
   const pxPerM = Math.min(size.w / vb.w, size.h / vb.h) || 50
@@ -417,10 +421,10 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
                 <polygon
                   points={points(outline)}
                   fill="none"
-                  strokeWidth={px(1.5)}
-                  strokeDasharray={opening.kind === 'door' ? `${px(5)} ${px(3)}` : undefined}
-                  className={opening.kind === 'window' ? 'stroke-sky-500' : opening.kind === 'door' ? 'stroke-accent' : 'stroke-ink/25'}
+                  strokeWidth={px(opening.kind === 'door' ? 1 : 1.5)}
+                  className={opening.kind === 'window' ? 'stroke-sky-500' : opening.kind === 'door' ? 'stroke-accent/60' : 'stroke-ink/25'}
                 />
+                {opening.kind === 'door' && <DoorSwingMark wall={wall} opening={opening} px={px} />}
                 {active && tool === 'select' && (
                   <polygon data-handle="opening" data-opening={key} points={points(outline)} fill="transparent" className="cursor-ew-resize" />
                 )}
@@ -428,6 +432,18 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
             )
           }),
         )}
+
+        {/* Furniture footprints for reference; they're moved in the 3D view. */}
+        {items.map((it) => (
+          <polygon
+            key={it.id}
+            points={points(footprint(it))}
+            pointerEvents="none"
+            className="fill-ink/[0.06] stroke-ink/40"
+            strokeWidth={px(1)}
+            strokeDasharray={catalogEntry(it.type)?.layer === 'floor' ? undefined : `${px(4)} ${px(3)}`}
+          />
+        ))}
 
         {plan.rooms.map((room) => {
           const [x, y] = roomAnchor(room)
@@ -455,7 +471,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         {tool === 'select' && selectedRoom && selectedRoom.polygon.map((p, i) => <Handle key={i} p={p} px={px} />)}
 
         {/* Drawing previews */}
-        {tool === 'wall' && last && cursor && (
+        {tool === 'wall' && last && cursor && distance(last, cursor.point) > 0.005 && (
           <>
             <polygon
               points={points(wallOutline({ id: 'preview', start: last, end: cursor.point, thickness: useEditorStore.getState().wallThickness }))}
@@ -563,6 +579,22 @@ function CalibrationLine({ a, b, px }: { a: Vec2; b: Vec2; px: (n: number) => nu
     <g pointerEvents="none">
       <line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} strokeWidth={px(2)} strokeDasharray={`${px(6)} ${px(4)}`} className="stroke-accent" />
       <DimensionLabel a={a} b={b} px={px} />
+    </g>
+  )
+}
+
+/** Plan-drawing door symbol: the open leaf plus its quarter-circle swing. */
+function DoorSwingMark({ wall, opening, px }: { wall: Wall; opening: Opening; px: (n: number) => number }) {
+  const { hinge, jamb, toward } = doorSwing(wall, opening)
+  const r = opening.width
+  const tip: Vec2 = [hinge[0] + toward[0] * r, hinge[1] + toward[1] * r]
+  const a1 = Math.atan2(tip[1] - hinge[1], tip[0] - hinge[0])
+  const a2 = Math.atan2(jamb[1] - hinge[1], jamb[0] - hinge[0])
+  const delta = Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1))
+  return (
+    <g pointerEvents="none" fill="none" className="stroke-accent">
+      <line x1={hinge[0]} y1={hinge[1]} x2={tip[0]} y2={tip[1]} strokeWidth={px(2)} />
+      <path d={`M ${tip[0]} ${tip[1]} A ${r} ${r} 0 0 ${delta > 0 ? 1 : 0} ${jamb[0]} ${jamb[1]}`} strokeWidth={px(1)} strokeDasharray={`${px(4)} ${px(3)}`} />
     </g>
   )
 }

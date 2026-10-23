@@ -1,64 +1,94 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { FloorPlan, Room, Wall } from '../../types/plan'
+import { faceKey, type Design } from '../../types/design'
 import { useAppStore } from '../../store/useAppStore'
-import { alongWall, polygonArea, roomAnchor, wallAngle, wallLength, wallPieces } from '../../lib/planMath'
-import { defaultFinish, finishMaterial } from './finishes'
+import { useDesignStore } from '../../store/useDesignStore'
+import { useDesign, useReadOnly } from '../design/designContext'
+import { alongWall, faceRoom, polygonArea, roomAnchor, wallAngle, wallLength, wallPieces, type WallPiece } from '../../lib/planMath'
+import { floorMaterial, floorSpecFor } from './finishes'
+import { featureMaterial, paintMaterial } from './wallFinishes'
+import { Door, WindowUnit } from './Openings'
+import { Skirting } from './Skirting'
+import { Ceilings } from './Ceilings'
+import { CeilingSlabs } from './Interior'
+import { useDaylight } from './daylight'
+import { sceneBridge } from './sceneBridge'
 
 export const CUTAWAY_HEIGHT = 1.1
 const SLAB_DEPTH = 0.2
 const ACCENT = '#d08850'
 
+const STRUCTURAL = new THREE.MeshStandardMaterial({ color: '#c8643f', roughness: 0.85 })
+const CAP = new THREE.MeshStandardMaterial({ color: '#2b2c2f', roughness: 1 })
+const SLAB = new THREE.MeshStandardMaterial({ color: '#cdc8c0', roughness: 0.95 })
+
 // Plan y runs down the drawing; in 3D it maps straight onto +z, so plan (x, y) → world (x, 0, y).
 
 export function FlatModel({ plan }: { plan: FloorPlan }) {
   const wallMode = useAppStore((s) => s.wallMode)
-  const wallPaint = useAppStore((s) => s.wallPaint)
   const showStructural = useAppStore((s) => s.showStructural)
-  const showLabels = useAppStore((s) => s.showLabels)
-  const cut = wallMode === 'cutaway' ? CUTAWAY_HEIGHT : undefined
+  const readOnly = useReadOnly()
+  const walking = useAppStore((s) => s.mode === 'walk') && !readOnly
+  const showLabels = useAppStore((s) => s.showLabels) && !readOnly && !walking
+  const design = useDesign((d) => d)
+  const { lightsOn } = useDaylight()
+  // Walls are always full height when you're inside the flat.
+  const cut = wallMode === 'cutaway' && !walking ? CUTAWAY_HEIGHT : undefined
 
-  const materials = useMemo(
-    () => ({
-      wall: new THREE.MeshStandardMaterial({ color: wallPaint, roughness: 0.92 }),
-      structural: new THREE.MeshStandardMaterial({ color: '#c8643f', roughness: 0.85 }),
-      cap: new THREE.MeshStandardMaterial({ color: '#2b2c2f', roughness: 1 }),
-      glass: new THREE.MeshStandardMaterial({ color: '#b9d4e3', roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.22, depthWrite: false }),
-      slab: new THREE.MeshStandardMaterial({ color: '#cdc8c0', roughness: 0.95 }),
-    }),
-    [wallPaint],
-  )
+  // Which room each wall face looks into only changes with the plan.
+  const faceRooms = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const w of plan.walls) {
+      for (const side of [1, -1] as const) {
+        const room = faceRoom(plan, w, side)
+        if (room) map.set(faceKey(w.id, side), room.id)
+      }
+    }
+    return map
+  }, [plan])
+
+  const faceMaterial = (wall: Wall, side: 1 | -1, d: Design): THREE.Material => {
+    if (showStructural && wall.structural) return STRUCTURAL
+    const feature = d.features[faceKey(wall.id, side)]
+    const fm = feature && featureMaterial(feature)
+    if (fm) return fm
+    const roomId = faceRooms.get(faceKey(wall.id, side))
+    return paintMaterial((roomId && d.roomPaint[roomId]) || d.wallPaint)
+  }
 
   return (
     <group>
       {plan.rooms.map((room) => (
-        <RoomFloor key={room.id} room={room} slabMaterial={materials.slab} />
+        <RoomFloor key={room.id} room={room} />
       ))}
-      {plan.walls.filter((wall) => wallLength(wall) > 0.005).map((wall) => (
-        <WallMesh
-          key={wall.id}
-          wall={wall}
-          ceiling={plan.ceilingHeight}
-          cut={cut}
-          material={showStructural && wall.structural ? materials.structural : materials.wall}
-          capMaterial={materials.cap}
-          glassMaterial={materials.glass}
-        />
-      ))}
+      {plan.walls
+        .filter((wall) => wallLength(wall) > 0.005)
+        .map((wall) => {
+          const base = showStructural && wall.structural ? STRUCTURAL : paintMaterial(design.wallPaint)
+          // BoxGeometry face order: +x, -x, +y, -y, +z (side 1), -z (side -1).
+          const materials = [base, base, base, base, faceMaterial(wall, 1, design), faceMaterial(wall, -1, design)]
+          return <WallMesh key={wall.id} wall={wall} ceiling={plan.ceilingHeight} cut={cut} materials={materials} />
+        })}
+      <Skirting plan={plan} />
+      {cut === undefined && <Ceilings plan={plan} ceilings={design.ceilings} height={plan.ceilingHeight} />}
+      {walking && <CeilingSlabs plan={plan} height={plan.ceilingHeight} lightsOn={lightsOn} />}
       {showLabels && plan.rooms.map((room) => <RoomLabel key={room.id} room={room} />)}
     </group>
   )
 }
 
-function RoomFloor({ room, slabMaterial }: { room: Room; slabMaterial: THREE.Material }) {
-  const finishId = useAppStore((s) => s.floorFinish[room.id]) ?? defaultFinish(room.kind)
-  const selected = useAppStore((s) => s.selectedRoomId === room.id)
-  const hovered = useAppStore((s) => s.hoveredRoomId === room.id)
+function RoomFloor({ room }: { room: Room }) {
+  const stored = useDesign((d) => d.floors[room.id])
+  const readOnly = useReadOnly()
+  const selected = useAppStore((s) => s.selectedRoomId === room.id) && !readOnly
+  const hovered = useAppStore((s) => s.hoveredRoomId === room.id) && !readOnly
   const select = useAppStore((s) => s.selectRoom)
   const setHovered = useAppStore((s) => s.setHoveredRoom)
   const level = room.floorLevel ?? 0
+  const spec = floorSpecFor(stored, room.kind)
 
   const { floor, slab } = useMemo(() => {
     const shape = new THREE.Shape(room.polygon.map(([x, y]) => new THREE.Vector2(x, -y)))
@@ -69,25 +99,30 @@ function RoomFloor({ room, slabMaterial }: { room: Room; slabMaterial: THREE.Mat
   }, [room])
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > 4) return // ignore the end of an orbit drag
+    if (readOnly || e.delta > 4) return // ignore the end of an orbit drag
     e.stopPropagation()
+    const app = useAppStore.getState()
+    if (app.featurePick) return // picking a wall, not a room
+    // In the walkthrough, clicking the floor walks you there.
+    if (app.mode === 'walk') return app.walkTo([e.point.x + sceneBridge.offset[0], e.point.z + sceneBridge.offset[1]])
     select(selected ? null : room.id)
   }
 
   return (
     <group rotation-x={-Math.PI / 2}>
-      <mesh geometry={slab} material={slabMaterial} position-z={level - SLAB_DEPTH - 0.002} receiveShadow />
+      <mesh geometry={slab} material={SLAB} position-z={level - SLAB_DEPTH - 0.002} receiveShadow />
       <mesh
         geometry={floor}
-        material={finishMaterial(finishId)}
+        material={floorMaterial(spec)}
         position-z={level}
         receiveShadow
         onClick={onClick}
         onPointerOver={(e) => {
+          if (readOnly) return
           e.stopPropagation()
           setHovered(room.id)
         }}
-        onPointerOut={() => setHovered(null)}
+        onPointerOut={() => !readOnly && setHovered(null)}
       />
       {(selected || hovered) && (
         <mesh geometry={floor} position-z={level + 0.004} renderOrder={1}>
@@ -98,19 +133,45 @@ function RoomFloor({ room, slabMaterial }: { room: Room; slabMaterial: THREE.Mat
   )
 }
 
-interface WallMeshProps {
-  wall: Wall
-  ceiling: number
-  cut?: number
-  material: THREE.Material
-  capMaterial: THREE.Material
-  glassMaterial: THREE.Material
+/**
+ * Box for one wall piece whose two long faces get UVs in metres: u runs along the wall from
+ * its start (mirrored on the -z face so patterns read left-to-right from either side), v is
+ * height above the floor. Textures then only need a repeat of 1 / (metres per tile).
+ */
+function wallPieceGeometry(piece: WallPiece, thickness: number) {
+  const len = piece.to - piece.from
+  const h = piece.top - piece.bottom
+  const along = (piece.from + piece.to) / 2
+  const midY = piece.bottom + h / 2
+  const geo = new THREE.BoxGeometry(len, h, thickness)
+  const pos = geo.getAttribute('position')
+  const uv = geo.getAttribute('uv')
+  for (const face of [4, 5]) {
+    for (let i = face * 4; i < face * 4 + 4; i++) {
+      const u = along + pos.getX(i)
+      uv.setXY(i, face === 4 ? u : -u, midY + pos.getY(i))
+    }
+  }
+  uv.needsUpdate = true
+  return geo
 }
 
-function WallMesh({ wall, ceiling, cut, material, capMaterial, glassMaterial }: WallMeshProps) {
+function WallMesh({ wall, ceiling, cut, materials }: { wall: Wall; ceiling: number; cut?: number; materials: THREE.Material[] }) {
   const pieces = useMemo(() => wallPieces(wall, ceiling, cut), [wall, ceiling, cut])
+  const geometries = useMemo(() => pieces.map((p) => wallPieceGeometry(p, wall.thickness)), [pieces, wall.thickness])
+  useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries])
   const rotation = -wallAngle(wall)
   const visibleTop = Math.min(wall.height ?? ceiling, cut ?? Infinity)
+
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    const pick = useAppStore.getState().featurePick
+    if (!pick || e.delta > 4) return
+    const side = e.face?.materialIndex === 4 ? 1 : e.face?.materialIndex === 5 ? -1 : null
+    if (!side) return
+    e.stopPropagation()
+    useDesignStore.getState().edit((d) => ({ ...d, features: { ...d.features, [faceKey(wall.id, side)]: pick } }))
+    useAppStore.getState().setFeaturePick(null)
+  }
 
   return (
     <>
@@ -120,30 +181,24 @@ function WallMesh({ wall, ceiling, cut, material, capMaterial, glassMaterial }: 
         const [x, z] = alongWall(wall, (p.from + p.to) / 2)
         return (
           <group key={i} position={[x, 0, z]} rotation-y={rotation}>
-            <mesh position-y={p.bottom + h / 2} material={material} castShadow receiveShadow>
-              <boxGeometry args={[len, h, wall.thickness]} />
-            </mesh>
+            <mesh geometry={geometries[i]} position-y={p.bottom + h / 2} material={materials} castShadow receiveShadow onClick={onClick} />
             {p.top >= visibleTop - 1e-6 && (
-              <mesh position-y={p.top + 0.002} material={capMaterial}>
+              <mesh position-y={p.top + 0.002} material={CAP}>
                 <boxGeometry args={[len, 0.004, wall.thickness]} />
               </mesh>
             )}
           </group>
         )
       })}
-      {(wall.openings ?? [])
-        .filter((o) => o.kind === 'window')
-        .map((o) => {
-          const top = Math.min(o.sill + o.height, cut ?? Infinity)
-          if (top <= o.sill) return null
-          const h = top - o.sill
-          const [x, z] = alongWall(wall, o.offset + o.width / 2)
-          return (
-            <mesh key={o.id} position={[x, o.sill + h / 2, z]} rotation-y={rotation} material={glassMaterial}>
-              <boxGeometry args={[o.width, h, 0.02]} />
-            </mesh>
-          )
-        })}
+      {(wall.openings ?? []).map((o) => {
+        if (o.kind === 'opening') return null
+        const [x, z] = alongWall(wall, o.offset + o.width / 2)
+        return (
+          <group key={o.id} position={[x, 0, z]} rotation-y={rotation}>
+            {o.kind === 'door' ? <Door wall={wall} opening={o} cut={cut} /> : <WindowUnit wall={wall} opening={o} cut={cut} />}
+          </group>
+        )
+      })}
     </>
   )
 }

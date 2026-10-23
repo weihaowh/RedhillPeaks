@@ -11,6 +11,15 @@ export interface Opening {
   width: number
   sill: number
   height: number
+  /** Doors: which jamb the leaf hangs on (default 'start', the jamb nearer the wall start). */
+  hinge?: 'start' | 'end'
+  /**
+   * Doors: which side of the wall the leaf swings into. 1 is the wall's left-hand normal
+   * (-dy, dx) in plan space, i.e. +y for a wall drawn left→right; -1 is the other side.
+   */
+  side?: 1 | -1
+  /** Doors: finish preset for the leaf. */
+  style?: 'standard' | 'main' | 'shelter'
 }
 
 export interface Wall {

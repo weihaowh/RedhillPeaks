@@ -1,69 +1,76 @@
-import { useEffect, useRef } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
-import { CameraControls, Environment, Lightformer } from '@react-three/drei'
-import { EffectComposer, N8AO, SMAA } from '@react-three/postprocessing'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import clsx from 'clsx'
+import * as THREE from 'three'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { CameraControls, PerformanceMonitor } from '@react-three/drei'
 import type { FloorPlan } from '../../types/plan'
 import { useAppStore } from '../../store/useAppStore'
-import { planBounds, roomAnchor } from '../../lib/planMath'
+import { planBounds } from '../../lib/planMath'
 import { FlatModel } from './FlatModel'
-
-const BACKGROUND = { light: '#e9eaec', dark: '#121417' }
-const GROUND = { light: '#dfe0e2', dark: '#181a1e' }
+import { Effects, FOV, Stage, VIEW_DIR } from './SceneStage'
+import { Minimap, cameraPose } from './Minimap'
+import { Walkthrough } from './Walkthrough'
+import { WalkOverlay } from './WalkOverlay'
+import { FurnitureLayer } from '../furniture/FurnitureLayer'
+import { addItem } from '../furniture/itemActions'
+import { FURNITURE_MIME, floorPointAt, sceneBridge } from './sceneBridge'
 
 export default function Scene3D({ plan }: { plan: FloorPlan }) {
-  const theme = useAppStore((s) => s.theme)
   const quality = useAppStore((s) => s.quality)
+  const mode = useAppStore((s) => s.mode)
   const selectRoom = useAppStore((s) => s.selectRoom)
+  // Lowered when the frame rate struggles, raised again when it recovers.
+  const [dprFactor, setDprFactor] = useState(1)
+  const baseDpr = quality === 'draft' ? 1 : quality === 'high' ? 1.5 : 2
+  const dpr = Math.max(0.6, Math.min(window.devicePixelRatio || 1, baseDpr) * dprFactor)
+  const picking = useAppStore((s) => !!s.featurePick)
   const b = planBounds(plan)
-  const high = quality === 'high'
+  const offset = useMemo<[number, number]>(() => [b.cx, b.cy], [b.cx, b.cy])
 
   return (
-    <Canvas
-      shadows
-      dpr={high ? [1, 2] : 1}
-      camera={{ fov: 38, near: 0.1, far: 200, position: [9, 13, 13] }}
-      gl={{ antialias: !high, preserveDrawingBuffer: true }}
-      onPointerMissed={() => selectRoom(null)}
+    <div
+      className={clsx('relative h-full w-full', picking && 'cursor-crosshair')}
+      // Furniture dragged in from the library lands where it is dropped.
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(FURNITURE_MIME)) e.preventDefault()
+      }}
+      onDrop={(e) => {
+        const type = e.dataTransfer.getData(FURNITURE_MIME)
+        const p = type ? floorPointAt(e.clientX, e.clientY) : null
+        if (!p) return
+        e.preventDefault()
+        addItem(type, p[0], p[1])
+      }}
     >
-      <color attach="background" args={[BACKGROUND[theme]]} />
-
-      <hemisphereLight args={['#ffffff', '#d8cfc4', 0.9]} />
-      <directionalLight
-        castShadow
-        position={[-5, 14, 9]}
-        intensity={2.6}
-        color="#fff3e2"
-        shadow-mapSize={high ? [4096, 4096] : [1024, 1024]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.03}
+      <Canvas
+        shadows
+        dpr={dpr}
+        camera={{ fov: FOV, near: 0.1, far: 200, position: [9, 13, 13] }}
+        gl={{ antialias: quality === 'draft', preserveDrawingBuffer: true }}
+        onPointerMissed={() => {
+          // While picking a feature wall, a stray click (e.g. through a window) shouldn't
+          // cancel the pick or close the room panel; Esc or Cancel ends it.
+          if (!useAppStore.getState().featurePick) selectRoom(null)
+        }}
       >
-        <orthographicCamera attach="shadow-camera" args={[-10, 10, 10, -10, 0.5, 50]} />
-      </directionalLight>
-      <Environment resolution={256} frames={1}>
-        <Lightformer intensity={1.2} rotation-x={Math.PI / 2} position={[0, 8, 0]} scale={[16, 16, 1]} />
-        <Lightformer intensity={0.9} color="#ffe6cc" rotation-y={Math.PI / 2} position={[-10, 3, 0]} scale={[14, 4, 1]} />
-        <Lightformer intensity={0.6} color="#dce8ff" rotation-y={-Math.PI / 2} position={[10, 3, 0]} scale={[14, 4, 1]} />
-      </Environment>
+        <Stage plan={plan}>
+          <FlatModel plan={plan} />
+          <FurnitureLayer plan={plan} />
+        </Stage>
 
-      {/* Centre the flat on the origin so lights and camera don't depend on plan coordinates. */}
-      <group position={[-b.cx, 0, -b.cy]}>
-        <FlatModel plan={plan} />
-      </group>
+        <PerformanceMonitor
+          onDecline={() => setDprFactor((f) => Math.max(0.5, f - 0.25))}
+          onIncline={() => setDprFactor((f) => Math.min(1, f + 0.25))}
+        />
+        {mode === 'walk' ? <Walkthrough plan={plan} /> : <CameraRig plan={plan} />}
+        <PoseTracker offset={offset} />
+        <SceneBridge offset={offset} />
 
-      <mesh rotation-x={-Math.PI / 2} position-y={-0.21} receiveShadow>
-        <circleGeometry args={[40, 64]} />
-        <meshStandardMaterial color={GROUND[theme]} roughness={1} />
-      </mesh>
-
-      <CameraRig plan={plan} />
-
-      {high && (
-        <EffectComposer multisampling={0}>
-          <N8AO aoRadius={0.6} distanceFalloff={0.8} intensity={2.2} halfRes />
-          <SMAA />
-        </EffectComposer>
-      )}
-    </Canvas>
+        <Effects />
+      </Canvas>
+      <Minimap plan={plan} />
+      {mode === 'walk' && <WalkOverlay />}
+    </div>
   )
 }
 
@@ -71,24 +78,72 @@ function CameraRig({ plan }: { plan: FloorPlan }) {
   const ref = useRef<CameraControls>(null)
   const selectedId = useAppStore((s) => s.selectedRoomId)
   const resetNonce = useAppStore((s) => s.viewResetNonce)
-  const b = planBounds(plan)
   const aspect = useThree((s) => s.size.width / s.size.height)
-  // Portrait screens see less of the flat's width, so start further back.
-  const zoomOut = Math.min(Math.max(0.95 / aspect, 1), 2)
+  const b = planBounds(plan)
 
+  /** Looks at a plan-space box from the default direction, far enough back to fit it on screen. */
+  const frame = (minX: number, minY: number, maxX: number, maxY: number, smooth: boolean, margin: number) => {
+    const target = new THREE.Vector3((minX + maxX) / 2 - b.cx, 0, (minY + maxY) / 2 - b.cy)
+    const radius = Math.hypot(maxX - minX, maxY - minY) / 2
+    const halfFov = THREE.MathUtils.degToRad(FOV / 2)
+    // Narrow screens are limited by the horizontal field of view.
+    const fit = Math.min(Math.tan(halfFov), Math.tan(halfFov) * aspect)
+    const distance = Math.max((radius / fit) * margin, 3.5)
+    const eye = target.clone().addScaledVector(VIEW_DIR, distance)
+    ref.current?.setLookAt(eye.x, eye.y, eye.z, target.x, target.y, target.z, smooth)
+  }
+
+  // Re-frame the whole flat on reset only, not on every resize.
   useEffect(() => {
-    ref.current?.setLookAt(8.5 * zoomOut, 15.5 * zoomOut, 14.5 * zoomOut, 0, 0, 0.6, resetNonce > 0)
-    // Only re-frame on reset, not on every resize.
+    // Extra margin so the floating panels don't cover the edges of the flat.
+    frame(b.minX, b.minY, b.maxX, b.maxY, resetNonce > 0, 1.25)
   }, [resetNonce])
 
   useEffect(() => {
     const room = plan.rooms.find((r) => r.id === selectedId)
     if (!room) return
-    const [px, py] = roomAnchor(room)
-    const x = px - b.cx
-    const z = py - b.cy
-    ref.current?.setLookAt(x + 2.2, 7, z + 5, x, 0, z, true)
-  }, [selectedId, plan, b.cx, b.cy])
+    const xs = room.polygon.map((p) => p[0])
+    const ys = room.polygon.map((p) => p[1])
+    frame(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), true, 1.15)
+  }, [selectedId])
 
-  return <CameraControls ref={ref} makeDefault maxPolarAngle={Math.PI / 2.1} minDistance={2} maxDistance={50} smoothTime={0.35} />
+  const dragging = useAppStore((s) => s.draggingItem)
+  return <CameraControls ref={ref} makeDefault enabled={!dragging} maxPolarAngle={Math.PI / 2.1} minDistance={1.5} maxDistance={60} smoothTime={0.35} />
+}
+
+/** Publishes the camera's plan-space position and heading for the minimap without re-rendering React. */
+function PoseTracker({ offset }: { offset: [number, number] }) {
+  const dir = useRef(new THREE.Vector3())
+  useFrame(({ camera }) => {
+    camera.getWorldDirection(dir.current)
+    cameraPose.x = camera.position.x + offset[0]
+    cameraPose.y = camera.position.z + offset[1]
+    cameraPose.heading = Math.atan2(dir.current.z, dir.current.x)
+  })
+  return null
+}
+
+/** Shares the live camera and controls with code outside the canvas (see sceneBridge). */
+function SceneBridge({ offset }: { offset: [number, number] }) {
+  const camera = useThree((s) => s.camera)
+  const gl = useThree((s) => s.gl)
+  const controls = useThree((s) => s.controls) as CameraControls | null
+  const get = useThree((s) => s.get)
+  useEffect(() => {
+    sceneBridge.camera = camera
+    sceneBridge.canvas = gl.domElement
+    sceneBridge.controls = controls ?? undefined
+    sceneBridge.offset = offset
+    sceneBridge.getState = get
+  }, [camera, gl, controls, offset, get])
+  useEffect(
+    () => () => {
+      sceneBridge.camera = undefined
+      sceneBridge.canvas = undefined
+      sceneBridge.controls = undefined
+      sceneBridge.getState = undefined
+    },
+    [],
+  )
+  return null
 }

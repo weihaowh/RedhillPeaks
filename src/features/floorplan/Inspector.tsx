@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AppWindow, DoorOpen, RefreshCcw, Trash2 } from 'lucide-react'
+import { AppWindow, DoorOpen, FlipHorizontal2, FlipVertical2, RefreshCcw, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 import type { FloorPlan, Opening, OpeningKind, Room, RoomKind, Wall } from '../../types/plan'
 import { usePlanStore } from '../../store/usePlanStore'
@@ -134,6 +134,18 @@ export function OpeningInspector({ wall, opening }: { wall: Wall; opening: Openi
           <MmInput value={opening.height} min={0.2} onCommit={(height) => patch({ height })} />
         </Field>
       </div>
+      {opening.kind === 'door' && (
+        <Field label="Swing">
+          <div className="flex gap-1">
+            <button type="button" className="chip flex-1 justify-center ring-1 ring-line" onClick={() => patch({ hinge: (opening.hinge ?? 'start') === 'start' ? 'end' : 'start' })}>
+              <FlipHorizontal2 size={13} /> Flip hinge
+            </button>
+            <button type="button" className="chip flex-1 justify-center ring-1 ring-line" onClick={() => patch({ side: (opening.side ?? 1) === 1 ? -1 : 1 })}>
+              <FlipVertical2 size={13} /> Flip side
+            </button>
+          </div>
+        </Field>
+      )}
       <p className="text-xs text-muted">Tip: with the Select tool, drag the highlighted opening along its wall.</p>
     </Panel>
   )

@@ -5,6 +5,20 @@ import { redhillPeaks } from '../data/redhillPeaks'
 
 const HISTORY_LIMIT = 100
 
+function withTracedDoorSwings(plan: FloorPlan): FloorPlan {
+  const traced = new Map(redhillPeaks.walls.flatMap((w) => (w.openings ?? []).map((o) => [`${w.id}|${o.id}`, o] as const)))
+  return {
+    ...plan,
+    walls: plan.walls.map((w) => ({
+      ...w,
+      openings: w.openings?.map((o) => {
+        const source = traced.get(`${w.id}|${o.id}`)
+        return source && o.kind === 'door' && !o.side ? { ...o, hinge: source.hinge, side: source.side, style: source.style } : o
+      }),
+    })),
+  }
+}
+
 interface PlanState {
   plan: FloorPlan
   past: FloorPlan[]
@@ -43,8 +57,14 @@ export const usePlanStore = create<PlanState>()(
     }),
     {
       name: 'redhill-peaks-plan',
-      version: 1,
+      version: 2,
       partialize: (s) => ({ plan: s.plan }),
+      migrate: (persisted, version) => {
+        const state = persisted as { plan: FloorPlan }
+        // v2 added door hinge/swing data; copy it onto doors that came from the bundled trace.
+        if (version < 2 && state.plan) state.plan = withTracedDoorSwings(state.plan)
+        return state as PlanState
+      },
     },
   ),
 )

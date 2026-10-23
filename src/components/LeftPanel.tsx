@@ -3,6 +3,8 @@ import clsx from 'clsx'
 import type { FloorPlan, RoomKind } from '../types/plan'
 import { useAppStore, type LeftTab } from '../store/useAppStore'
 import { polygonArea } from '../lib/planMath'
+import { LibraryPanel } from '../features/furniture/LibraryPanel'
+import { PresetsPanel } from '../features/presets/PresetsPanel'
 
 export const KIND_COLOR: Record<RoomKind, string> = {
   living: '#d9a066',
@@ -25,6 +27,7 @@ export function LeftPanel({ plan }: { plan: FloorPlan }) {
   const setOpen = useAppStore((s) => s.setLeftOpen)
   const tab = useAppStore((s) => s.leftTab)
   const setTab = useAppStore((s) => s.setLeftTab)
+  const mode = useAppStore((s) => s.mode)
 
   if (!open) {
     return (
@@ -35,7 +38,13 @@ export function LeftPanel({ plan }: { plan: FloorPlan }) {
   }
 
   return (
-    <aside className="glass absolute bottom-20 left-3 top-20 z-20 flex w-[min(18rem,calc(100vw-1.5rem))] flex-col overflow-hidden">
+    <aside
+      className={clsx(
+        'glass absolute bottom-20 left-3 top-20 z-20 flex w-[min(18rem,calc(100vw-1.5rem))] flex-col overflow-hidden',
+        // Leave room for the 3D minimap in the bottom-left corner.
+        mode !== 'plan' && 'lg:bottom-[13.5rem]',
+      )}
+    >
       <div className="flex items-center gap-1 border-b border-line/80 p-2">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" onClick={() => setTab(id)} className={clsx('chip flex-1 justify-center', tab === id && 'chip-on')}>
@@ -49,12 +58,8 @@ export function LeftPanel({ plan }: { plan: FloorPlan }) {
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === 'rooms' && <RoomsTab plan={plan} />}
-        {tab === 'library' && (
-          <EmptyState icon={Sofa} title="Furniture library" body="Sofas, beds, wardrobes, kitchens and décor at real dimensions. You will be able to drag them into any room. Arrives in Phase 5." />
-        )}
-        {tab === 'presets' && (
-          <EmptyState icon={Bookmark} title="No presets yet" body="Save whole-flat designs, single rooms or colour palettes. You will be able to compare them side by side and export them. Arrives in Phase 6." />
-        )}
+        {tab === 'library' && <LibraryPanel plan={plan} />}
+        {tab === 'presets' && <PresetsPanel plan={plan} />}
       </div>
     </aside>
   )
@@ -99,18 +104,6 @@ function RoomsTab({ plan }: { plan: FloorPlan }) {
           Room areas are measured along wall centre-lines. Switch to 2D Plan to edit the trace, or to upload a different floor plan.
         </p>
       </div>
-    </div>
-  )
-}
-
-function EmptyState({ icon: Icon, title, body }: { icon: typeof Layers; title: string; body: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 px-3 py-10 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink/5 text-muted">
-        <Icon size={20} />
-      </div>
-      <div className="text-sm font-semibold">{title}</div>
-      <p className="text-xs leading-relaxed text-muted">{body}</p>
     </div>
   )
 }

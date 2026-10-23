@@ -1,27 +1,9 @@
 import { useEffect, useState } from 'react'
+import { dbRequest } from './db'
 
 // Uploaded files (floor plan images) live in IndexedDB; plans only keep their asset id.
 
-const DB_NAME = 'redhill-peaks-studio'
-const STORE = 'assets'
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-
-async function run<T>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest): Promise<T> {
-  const db = await openDb()
-  return new Promise<T>((resolve, reject) => {
-    const req = op(db.transaction(STORE, mode).objectStore(STORE))
-    req.onsuccess = () => resolve(req.result as T)
-    req.onerror = () => reject(req.error)
-  })
-}
+const run = <T,>(mode: IDBTransactionMode, op: (store: IDBObjectStore) => IDBRequest) => dbRequest<T>('assets', mode, op)
 
 export async function putAsset(blob: Blob): Promise<string> {
   const id = `asset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`

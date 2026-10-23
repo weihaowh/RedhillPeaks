@@ -13,13 +13,14 @@ const win = (id: string, offset: number, width: number, sill = 0.9, height = 1.3
   height,
 })
 
-const door = (id: string, offset: number, width: number, height = 2.1): Opening => ({
+const door = (id: string, offset: number, width: number, swing: Pick<Opening, 'hinge' | 'side' | 'style'>, height = 2.1): Opening => ({
   id,
   kind: 'door',
   offset,
   width,
   sill: 0,
   height,
+  ...swing,
 })
 
 export const redhillPeaks: FloorPlan = {
@@ -78,24 +79,24 @@ export const redhillPeaks: FloorPlan = {
     { id: 'hs-n', start: [0, 4.55], end: [1.85, 4.55], thickness: 0.3, structural: true },
     { id: 'hs-w', start: [0, 4.55], end: [0, 7.4], thickness: 0.3, structural: true, exterior: true },
     { id: 'hs-s', start: [0, 7.4], end: [1.85, 7.4], thickness: 0.3, structural: true, exterior: true },
-    { id: 'hs-e', start: [1.85, 4.55], end: [1.85, 7.4], thickness: 0.3, structural: true, openings: [door('door-hs', 0.93, 0.75, 2.0)] },
+    { id: 'hs-e', start: [1.85, 4.55], end: [1.85, 7.4], thickness: 0.3, structural: true, openings: [door('door-hs', 0.93, 0.75, { hinge: 'start', side: -1, style: 'shelter' }, 2.0)] },
 
     // Entrance and kitchen.
-    { id: 'entry', start: [1.85, 7.4], end: [3.6, 7.4], thickness: 0.2, exterior: true, openings: [door('door-main', 0.3, 1.0)] },
+    { id: 'entry', start: [1.85, 7.4], end: [3.6, 7.4], thickness: 0.2, exterior: true, openings: [door('door-main', 0.3, 1.0, { hinge: 'start', side: -1, style: 'main' })] },
     { id: 'kitchen-w', start: [3.6, 6.1], end: [3.6, 8.9], thickness: 0.3, structural: true, exterior: true },
     { id: 'kitchen-s', start: [3.6, 8.9], end: [8.75, 8.9], thickness: 0.3, structural: true, exterior: true },
     {
       id: 'kitchen-beam', start: [3.6, 6.1], end: [6.85, 6.1], thickness: 0.15,
       openings: [{ id: 'kitchen-open', kind: 'opening', offset: 0, width: 3.25, sill: 0, height: 2.3 }],
     },
-    { id: 'sy-w', start: [6.65, 6.45], end: [6.65, 8.9], thickness: 0.1, openings: [door('door-sy', 0.5, 1.0)] },
+    { id: 'sy-w', start: [6.65, 6.45], end: [6.65, 8.9], thickness: 0.1, openings: [door('door-sy', 0.5, 1.0, { hinge: 'end', side: -1 })] },
     { id: 'sy-e', start: [8.75, 6.45], end: [8.75, 8.9], thickness: 0.15, exterior: true, openings: [win('win-sy', 0.25, 1.9, 0.95, 1.25)] },
 
     // Bathrooms.
     { id: 'bath2-w', start: [6.85, 4.55], end: [6.85, 6.45], thickness: 0.45, structural: true },
     {
       id: 'bath-n', start: [7.05, 4.55], end: [11.7, 4.55], thickness: 0.1,
-      openings: [door('door-bath2', 0.25, 0.8), door('door-bath1', 2.65, 0.8)],
+      openings: [door('door-bath2', 0.25, 0.8, { hinge: 'end', side: 1 }), door('door-bath1', 2.65, 0.8, { hinge: 'end', side: 1 })],
     },
     { id: 'bath-mid', start: [9.05, 4.55], end: [9.05, 6.45], thickness: 0.1 },
     {
@@ -109,10 +110,10 @@ export const redhillPeaks: FloorPlan = {
 
     // Bedrooms.
     { id: 'bed3-w', start: [3.05, 0], end: [3.05, 3.4], thickness: 0.1 },
-    { id: 'bed3-s', start: [3.05, 3.4], end: [5.8, 3.4], thickness: 0.1, openings: [door('door-bed3', 1.8, 0.85)] },
+    { id: 'bed3-s', start: [3.05, 3.4], end: [5.8, 3.4], thickness: 0.1, openings: [door('door-bed3', 1.8, 0.85, { hinge: 'end', side: -1 })] },
     { id: 'bed23', start: [5.8, 0], end: [5.8, 3.4], thickness: 0.15 },
-    { id: 'bed2-s', start: [5.8, 3.4], end: [8.6, 3.4], thickness: 0.1, openings: [door('door-bed2', 0.2, 0.85)] },
+    { id: 'bed2-s', start: [5.8, 3.4], end: [8.6, 3.4], thickness: 0.1, openings: [door('door-bed2', 0.2, 0.85, { hinge: 'start', side: -1 })] },
     { id: 'bed2-e', start: [8.6, 0], end: [8.6, 3.4], thickness: 0.1 },
-    { id: 'master-w', start: [8.6, 3.4], end: [8.6, 4.55], thickness: 0.1, openings: [door('door-master', 0.12, 0.9)] },
+    { id: 'master-w', start: [8.6, 3.4], end: [8.6, 4.55], thickness: 0.1, openings: [door('door-master', 0.12, 0.9, { hinge: 'start', side: -1 })] },
   ],
 }

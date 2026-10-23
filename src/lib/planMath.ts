@@ -1,4 +1,4 @@
-import type { FloorPlan, Room, Vec2, Wall } from '../types/plan'
+import type { FloorPlan, Opening, Room, Vec2, Wall } from '../types/plan'
 
 export function polygonArea(points: Vec2[]): number {
   let sum = 0
@@ -140,4 +140,40 @@ export function wallPieces(w: Wall, ceiling: number, cut?: number): WallPiece[] 
 
   if (cut === undefined) return pieces
   return pieces.filter((p) => p.bottom < cut).map((p) => ({ ...p, top: Math.min(p.top, cut) }))
+}
+
+/**
+ * Door swing in plan space: the hinge point on the wall centre-line, the opposite jamb,
+ * the leaf direction when closed, and the direction it swings toward.
+ */
+export function doorSwing(w: Wall, o: Opening) {
+  const len = wallLength(w)
+  const u: Vec2 = [(w.end[0] - w.start[0]) / len, (w.end[1] - w.start[1]) / len]
+  const side = o.side ?? 1
+  const atStart = (o.hinge ?? 'start') === 'start'
+  const hinge = alongWall(w, atStart ? o.offset : o.offset + o.width)
+  const jamb = alongWall(w, atStart ? o.offset + o.width : o.offset)
+  const closed: Vec2 = atStart ? u : [-u[0], -u[1]]
+  const toward: Vec2 = [-u[1] * side, u[0] * side]
+  return { hinge, jamb, closed, toward }
+}
+
+export function pointInPolygon([x, y]: Vec2, poly: Vec2[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i]
+    const [xj, yj] = poly[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+
+/** The room a wall face looks into, found by probing just in front of the face's midpoint. */
+export function faceRoom(plan: FloorPlan, w: Wall, side: 1 | -1): Room | undefined {
+  const len = wallLength(w)
+  if (len < 1e-6) return undefined
+  const mid = alongWall(w, len / 2)
+  const d = w.thickness / 2 + 0.1
+  const probe: Vec2 = [mid[0] - ((w.end[1] - w.start[1]) / len) * side * d, mid[1] + ((w.end[0] - w.start[0]) / len) * side * d]
+  return plan.rooms.find((r) => pointInPolygon(probe, r.polygon))
 }

@@ -1,11 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { FeatureSpec } from '../types/design'
+import type { SunSettings } from '../lib/sun'
 
 export type ViewMode = 'plan' | 'orbit' | 'walk'
 export type Theme = 'light' | 'dark'
 export type LeftTab = 'rooms' | 'library' | 'presets'
 export type WallMode = 'full' | 'cutaway'
-export type Quality = 'draft' | 'high'
+export type Quality = 'draft' | 'high' | 'ultra'
+export type LightsMode = 'auto' | 'on' | 'off'
 
 interface AppState {
   mode: ViewMode
@@ -16,10 +19,12 @@ interface AppState {
   selectedWallId: string | null
   /** Selected door/window, with the wall it sits in. */
   selectedOpening: { wallId: string; openingId: string } | null
+  selectedItemId: string | null
+  /** True while a furniture item is being dragged, so the camera stays put. */
+  draggingItem: boolean
   hoveredRoomId: string | null
-  /** Per-room floor finish overrides; rooms without one use their kind's default. */
-  floorFinish: Record<string, string>
-  wallPaint: string
+  /** While set, clicking a wall face in 3D applies this feature finish to it. */
+  featurePick: FeatureSpec | null
   showStructural: boolean
   showLabels: boolean
   wallMode: WallMode
@@ -27,6 +32,11 @@ interface AppState {
   underlayOpacity: number
   /** Bumped to ask the active view to re-frame the whole flat. */
   viewResetNonce: number
+  sun: SunSettings
+  /** Ceiling lights: 'auto' switches them on around sunset. */
+  lights: LightsMode
+  /** Walkthrough: a plan point to walk to (set by clicking the floor). */
+  walkTarget: { point: [number, number]; nonce: number } | null
 
   setMode: (mode: ViewMode) => void
   toggleTheme: () => void
@@ -35,19 +45,26 @@ interface AppState {
   selectRoom: (id: string | null) => void
   selectWall: (id: string | null) => void
   selectOpening: (sel: { wallId: string; openingId: string } | null) => void
+  selectItem: (id: string | null) => void
+  setDraggingItem: (dragging: boolean) => void
   clearSelection: () => void
   setHoveredRoom: (id: string | null) => void
-  setFloorFinish: (roomId: string, finishId: string) => void
-  setWallPaint: (hex: string) => void
+  setFeaturePick: (spec: FeatureSpec | null) => void
   toggleStructural: () => void
   toggleLabels: () => void
   setWallMode: (mode: WallMode) => void
   setQuality: (quality: Quality) => void
   setUnderlayOpacity: (value: number) => void
   resetView: () => void
+  setSun: (patch: Partial<SunSettings>) => void
+  setLights: (mode: LightsMode) => void
+  walkTo: (point: [number, number]) => void
 }
 
 const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+// Phones and low-core machines start on Draft; everyone can change it.
+const lowEnd =
+  typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || (navigator.hardwareConcurrency ?? 8) <= 4)
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -59,44 +76,52 @@ export const useAppStore = create<AppState>()(
       selectedRoomId: null,
       selectedWallId: null,
       selectedOpening: null,
+      selectedItemId: null,
+      draggingItem: false,
       hoveredRoomId: null,
-      floorFinish: {},
-      wallPaint: '#f4f1ea',
+      featurePick: null,
       showStructural: false,
       showLabels: true,
       wallMode: 'full',
-      quality: 'high',
+      quality: lowEnd ? 'draft' : 'high',
       underlayOpacity: 0.55,
       viewResetNonce: 0,
+      sun: { hour: 15, date: 'today', north: 0 },
+      lights: 'auto',
+      walkTarget: null,
 
-      setMode: (mode) => set({ mode }),
+      setMode: (mode) => set({ mode, featurePick: null }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setLeftTab: (leftTab) => set({ leftTab, leftOpen: true }),
       setLeftOpen: (leftOpen) => set({ leftOpen }),
-      selectRoom: (selectedRoomId) => set({ selectedRoomId, selectedWallId: null, selectedOpening: null }),
-      selectWall: (selectedWallId) => set({ selectedWallId, selectedRoomId: null, selectedOpening: null }),
-      selectOpening: (selectedOpening) => set({ selectedOpening, selectedRoomId: null, selectedWallId: null }),
-      clearSelection: () => set({ selectedRoomId: null, selectedWallId: null, selectedOpening: null }),
+      selectRoom: (selectedRoomId) => set({ selectedRoomId, selectedWallId: null, selectedOpening: null, selectedItemId: null }),
+      selectWall: (selectedWallId) => set({ selectedWallId, selectedRoomId: null, selectedOpening: null, selectedItemId: null }),
+      selectOpening: (selectedOpening) => set({ selectedOpening, selectedRoomId: null, selectedWallId: null, selectedItemId: null }),
+      selectItem: (selectedItemId) => set({ selectedItemId, selectedRoomId: null, selectedWallId: null, selectedOpening: null }),
+      setDraggingItem: (draggingItem) => set({ draggingItem }),
+      clearSelection: () => set({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null }),
       setHoveredRoom: (hoveredRoomId) => set({ hoveredRoomId }),
-      setFloorFinish: (roomId, finishId) => set((s) => ({ floorFinish: { ...s.floorFinish, [roomId]: finishId } })),
-      setWallPaint: (wallPaint) => set({ wallPaint }),
+      setFeaturePick: (featurePick) => set({ featurePick }),
       toggleStructural: () => set((s) => ({ showStructural: !s.showStructural })),
       toggleLabels: () => set((s) => ({ showLabels: !s.showLabels })),
       setWallMode: (wallMode) => set({ wallMode }),
       setQuality: (quality) => set({ quality }),
       setUnderlayOpacity: (underlayOpacity) => set({ underlayOpacity }),
-      resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, viewResetNonce: s.viewResetNonce + 1 })),
+      setSun: (patch) => set((s) => ({ sun: { ...s.sun, ...patch } })),
+      setLights: (lights) => set({ lights }),
+      walkTo: (point) => set((s) => ({ walkTarget: { point, nonce: (s.walkTarget?.nonce ?? 0) + 1 } })),
+      resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null, viewResetNonce: s.viewResetNonce + 1 })),
     }),
     {
       name: 'redhill-peaks-studio',
       partialize: (s) => ({
         theme: s.theme,
-        floorFinish: s.floorFinish,
-        wallPaint: s.wallPaint,
         showLabels: s.showLabels,
         wallMode: s.wallMode,
         quality: s.quality,
         underlayOpacity: s.underlayOpacity,
+        sun: s.sun,
+        lights: s.lights,
       }),
     },
   ),
