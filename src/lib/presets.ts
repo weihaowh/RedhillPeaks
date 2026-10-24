@@ -47,6 +47,7 @@ export function capturePreset(name: string, scope: PresetScope, design: Design, 
       ceilings: pick(design.ceilings, [room.id]),
       features: pick(design.features, roomFaceKeys(plan, room.id)),
       items: design.items.filter((it) => pointInPolygon([it.x, it.y], room.polygon)),
+      fixtures: design.fixtures.filter((f) => pointInPolygon([f.x, f.y], room.polygon)),
     }),
   }
 }
@@ -89,10 +90,14 @@ export function applyPreset(design: Design, plan: FloorPlan, preset: Preset, tar
 
   const faces = roomFaceKeys(plan, target)
   const keep = design.items.filter((it) => !pointInPolygon([it.x, it.y], room.polygon))
+  const outside = (design.fixtures ?? []).filter((f) => !pointInPolygon([f.x, f.y], room.polygon))
+  // Fresh ids for the incoming points, keeping their switch links pointing at each other.
+  const ids = new Map((p.fixtures ?? []).map((f) => [f.id, `fx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`]))
   return {
     ...next,
     features: { ...without(design.features, faces), ...structuredClone(p.features ?? {}) },
     items: [...keep, ...(p.items ?? []).map((it) => ({ ...structuredClone(it), id: newItemId() }))],
+    fixtures: [...outside, ...(p.fixtures ?? []).map((f) => ({ ...structuredClone(f), id: ids.get(f.id)!, switchId: f.switchId && (ids.get(f.switchId) ?? f.switchId) }))],
   }
 }
 

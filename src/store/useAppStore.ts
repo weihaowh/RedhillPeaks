@@ -5,11 +5,11 @@ import type { SunSettings } from '../lib/sun'
 
 export type ViewMode = 'plan' | 'orbit' | 'walk'
 export type Theme = 'light' | 'dark'
-export type LeftTab = 'rooms' | 'library' | 'presets'
+export type LeftTab = 'rooms' | 'library' | 'presets' | 'electrical'
 export type WallMode = 'full' | 'cutaway'
 export type Quality = 'draft' | 'high' | 'ultra'
 export type LightsMode = 'auto' | 'on' | 'off'
-export type ReportTab = 'budget' | 'list' | 'hdb' | 'boards'
+export type ReportTab = 'budget' | 'list' | 'electrical' | 'hdb' | 'boards'
 
 interface AppState {
   mode: ViewMode
@@ -21,6 +21,9 @@ interface AppState {
   /** Selected door/window, with the wall it sits in. */
   selectedOpening: { wallId: string; openingId: string } | null
   selectedItemId: string | null
+  selectedFixtureId: string | null
+  /** Show electrical symbols on the 2D plan and points in 3D. */
+  showElectrical: boolean
   /** True while a furniture item is being dragged, so the camera stays put. */
   draggingItem: boolean
   hoveredRoomId: string | null
@@ -51,6 +54,8 @@ interface AppState {
   selectWall: (id: string | null) => void
   selectOpening: (sel: { wallId: string; openingId: string } | null) => void
   selectItem: (id: string | null) => void
+  selectFixture: (id: string | null) => void
+  toggleElectrical: () => void
   setDraggingItem: (dragging: boolean) => void
   clearSelection: () => void
   setHoveredRoom: (id: string | null) => void
@@ -84,6 +89,8 @@ export const useAppStore = create<AppState>()(
       selectedWallId: null,
       selectedOpening: null,
       selectedItemId: null,
+      selectedFixtureId: null,
+      showElectrical: true,
       draggingItem: false,
       hoveredRoomId: null,
       featurePick: null,
@@ -103,12 +110,14 @@ export const useAppStore = create<AppState>()(
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setLeftTab: (leftTab) => set({ leftTab, leftOpen: true }),
       setLeftOpen: (leftOpen) => set({ leftOpen }),
-      selectRoom: (selectedRoomId) => set({ selectedRoomId, selectedWallId: null, selectedOpening: null, selectedItemId: null }),
-      selectWall: (selectedWallId) => set({ selectedWallId, selectedRoomId: null, selectedOpening: null, selectedItemId: null }),
-      selectOpening: (selectedOpening) => set({ selectedOpening, selectedRoomId: null, selectedWallId: null, selectedItemId: null }),
-      selectItem: (selectedItemId) => set({ selectedItemId, selectedRoomId: null, selectedWallId: null, selectedOpening: null }),
+      selectRoom: (selectedRoomId) => set({ selectedRoomId, selectedWallId: null, selectedOpening: null, selectedItemId: null, selectedFixtureId: null }),
+      selectWall: (selectedWallId) => set({ selectedWallId, selectedRoomId: null, selectedOpening: null, selectedItemId: null, selectedFixtureId: null }),
+      selectOpening: (selectedOpening) => set({ selectedOpening, selectedRoomId: null, selectedWallId: null, selectedItemId: null, selectedFixtureId: null }),
+      selectItem: (selectedItemId) => set({ selectedItemId, selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedFixtureId: null }),
+      selectFixture: (selectedFixtureId) => set({ selectedFixtureId, selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null }),
+      toggleElectrical: () => set((s) => ({ showElectrical: !s.showElectrical })),
       setDraggingItem: (draggingItem) => set({ draggingItem }),
-      clearSelection: () => set({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null }),
+      clearSelection: () => set({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null, selectedFixtureId: null }),
       setHoveredRoom: (hoveredRoomId) => set({ hoveredRoomId }),
       setFeaturePick: (featurePick) => set({ featurePick }),
       toggleStructural: () => set((s) => ({ showStructural: !s.showStructural })),
@@ -121,7 +130,7 @@ export const useAppStore = create<AppState>()(
       setBudget: (budget) => set({ budget }),
       openReport: (report) => set({ report }),
       walkTo: (point) => set((s) => ({ walkTarget: { point, nonce: (s.walkTarget?.nonce ?? 0) + 1 } })),
-      resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null, viewResetNonce: s.viewResetNonce + 1 })),
+      resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null, selectedFixtureId: null, viewResetNonce: s.viewResetNonce + 1 })),
     }),
     {
       name: 'redhill-peaks-studio',
@@ -134,6 +143,7 @@ export const useAppStore = create<AppState>()(
         sun: s.sun,
         lights: s.lights,
         budget: s.budget,
+        showElectrical: s.showElectrical,
       }),
     },
   ),

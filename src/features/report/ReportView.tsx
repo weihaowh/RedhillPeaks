@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CircleAlert, CircleCheck, CircleX, Download, Info, Palette, Printer, ShieldCheck, ShoppingCart, Wallet, X } from 'lucide-react'
+import { CircleAlert, CircleCheck, CircleX, Download, Info, Palette, Printer, ShieldCheck, ShoppingCart, Wallet, X, Zap } from 'lucide-react'
 import clsx from 'clsx'
 import type { FloorPlan } from '../../types/plan'
 import { useAppStore, type ReportTab } from '../../store/useAppStore'
@@ -8,10 +8,12 @@ import { CATEGORIES, estimate, sgd, type Estimate } from '../../lib/estimate'
 import { CHECK_ORDER, runChecks, type Check, type CheckStatus } from '../../lib/hdbChecks'
 import { shoppingCsv, shoppingList, type RoomList } from '../../lib/shopping'
 import { downloadText } from '../presets/presetUi'
+import { ElectricalReport } from './ElectricalReport'
 
 const TABS: { id: ReportTab; label: string; icon: typeof Wallet }[] = [
   { id: 'budget', label: 'Budget', icon: Wallet },
   { id: 'list', label: 'Shopping list', icon: ShoppingCart },
+  { id: 'electrical', label: 'Electrical', icon: Zap },
   { id: 'hdb', label: 'HDB checks', icon: ShieldCheck },
   { id: 'boards', label: 'Room boards', icon: Palette },
 ]
@@ -60,6 +62,7 @@ export function ReportView({ plan }: { plan: FloorPlan }) {
         <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
           {tab === 'budget' && <BudgetTab est={est} />}
           {tab === 'list' && <ListTab lists={lists} />}
+          {tab === 'electrical' && <ElectricalReport plan={plan} design={design} />}
           {tab === 'hdb' && <HdbTab checks={checks} />}
           {tab === 'boards' && <BoardsTab lists={lists} />}
         </div>

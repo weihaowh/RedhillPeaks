@@ -12,6 +12,7 @@ import { Minimap, cameraPose } from './Minimap'
 import { Walkthrough } from './Walkthrough'
 import { WalkOverlay } from './WalkOverlay'
 import { FurnitureLayer } from '../furniture/FurnitureLayer'
+import { FixtureLayer3D } from '../electrical/FixtureLayer3D'
 import { addItem } from '../furniture/itemActions'
 import { FURNITURE_MIME, floorPointAt, sceneBridge } from './sceneBridge'
 
@@ -56,6 +57,7 @@ export default function Scene3D({ plan }: { plan: FloorPlan }) {
         <Stage plan={plan}>
           <FlatModel plan={plan} />
           <FurnitureLayer plan={plan} />
+          <FixtureLayer3D ceiling={plan.ceilingHeight} />
         </Stage>
 
         <PerformanceMonitor

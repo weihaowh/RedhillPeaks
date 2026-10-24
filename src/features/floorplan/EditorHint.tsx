@@ -10,6 +10,7 @@ const HINTS: Record<Tool, [idle: string, drawing?: string]> = {
   door: ['Move over a wall and click to add a door. Red means it would overlap another opening.'],
   window: ['Move over a wall and click to add a window. Red means it would overlap another opening.'],
   room: ['Click the corners of a room. It snaps to your wall corners.', 'Keep clicking corners. Click the first point or press Enter to close the room.'],
+  electrical: ['Click a wall to mount the point (or anywhere in a room for lights). Pick other points from the Electrical tab. Esc to finish.'],
   calibrate: ['Click one end of a dimension you know, for example a wall marked 3050 on the drawing.', 'Now click the other end of that dimension.'],
 }
 

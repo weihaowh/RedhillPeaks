@@ -6,12 +6,14 @@ import { catalogEntry } from '../features/furniture/catalog'
 import { finishById } from '../features/scene/finishes'
 import { featureById } from '../features/scene/wallFinishes'
 import { bandRun } from '../features/scene/Ceilings'
+import { fixtureDef } from '../features/electrical/fixtures'
+import { fixtureRoom } from './electrical'
 import { faceRoom, pointInPolygon, polygonArea, wallLength } from './planMath'
 
 // A rough renovation budget from the current plan and design.
 
-export type CostCategory = 'Flooring' | 'Painting & feature walls' | 'Ceilings' | 'Carpentry' | 'Furniture' | 'Appliances' | 'Bathroom fittings'
-export const CATEGORIES: CostCategory[] = ['Flooring', 'Painting & feature walls', 'Ceilings', 'Carpentry', 'Furniture', 'Appliances', 'Bathroom fittings']
+export type CostCategory = 'Flooring' | 'Painting & feature walls' | 'Ceilings' | 'Electrical & aircon' | 'Carpentry' | 'Furniture' | 'Appliances' | 'Bathroom fittings'
+export const CATEGORIES: CostCategory[] = ['Flooring', 'Painting & feature walls', 'Ceilings', 'Electrical & aircon', 'Carpentry', 'Furniture', 'Appliances', 'Bathroom fittings']
 
 export interface CostLine {
   category: CostCategory
@@ -82,6 +84,21 @@ export function estimate(plan: FloorPlan, design: Design): Estimate {
     if (!spec || spec.style === 'flat') continue
     const run = bandRun(plan, room)
     lines.push({ category: 'Ceilings', label: spec.style === 'cove' ? 'Cove light false ceiling' : 'L-box', room: room.name, quantity: `${run.toFixed(1)} m run`, amount: run * CEILING_RATE[spec.style] })
+  }
+
+  // Electrical points, grouped per room and type.
+  const groups = new Map<string, { room?: string; type: string; n: number }>()
+  for (const f of design.fixtures ?? []) {
+    const room = fixtureRoom(f, plan)?.name ?? (plan.rooms.find((r) => pointInPolygon([f.x, f.y], r.polygon))?.name)
+    const key = `${room}|${f.type}`
+    const g = groups.get(key) ?? { room, type: f.type, n: 0 }
+    g.n++
+    groups.set(key, g)
+  }
+  for (const g of groups.values()) {
+    const def = fixtureDef(g.type)
+    if (!def || !def.cost) continue
+    lines.push({ category: 'Electrical & aircon', label: def.name, room: g.room, quantity: String(g.n), amount: def.cost * g.n })
   }
 
   // Furniture, carpentry, appliances and fittings.

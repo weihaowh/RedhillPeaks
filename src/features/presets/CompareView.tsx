@@ -7,6 +7,7 @@ import type { FloorPlan } from '../../types/plan'
 import type { Design } from '../../types/design'
 import { FlatModel } from '../scene/FlatModel'
 import { FurnitureLayer } from '../furniture/FurnitureLayer'
+import { FixtureLayer3D } from '../electrical/FixtureLayer3D'
 import { Effects, FOV, Stage, overviewEye } from '../scene/SceneStage'
 import { DesignProvider } from '../design/designContext'
 
@@ -56,12 +57,13 @@ export function CompareView({ sides, onClose }: { sides: [CompareSide, CompareSi
         {sides.map((side, i) => (
           <div key={i} className="relative min-h-0 bg-canvas">
             <Canvas shadows camera={camera} dpr={[1, 1.5]} gl={{ antialias: false }}>
-              <Stage plan={side.plan}>
-                <DesignProvider value={{ design: side.design, readOnly: true }}>
+              <DesignProvider value={{ design: side.design, readOnly: true }}>
+                <Stage plan={side.plan}>
                   <FlatModel plan={side.plan} />
                   <FurnitureLayer plan={side.plan} />
-                </DesignProvider>
-              </Stage>
+                  <FixtureLayer3D ceiling={side.plan.ceilingHeight} />
+                </Stage>
+              </DesignProvider>
               {i === 0 && area && <CameraControls makeDefault domElement={area} maxPolarAngle={Math.PI / 2.1} minDistance={1.5} maxDistance={60} />}
               <Effects max="high" />
             </Canvas>

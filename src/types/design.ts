@@ -32,6 +32,8 @@ export interface Design {
   features: Record<string, FeatureSpec>
   ceilings: Record<string, CeilingSpec>
   items: FurnitureItem[]
+  /** Electrical points, lights, aircon and data points. */
+  fixtures: Fixture[]
 }
 
 export const faceKey = (wallId: string, side: 1 | -1) => `${wallId}|${side}`
@@ -60,4 +62,26 @@ export interface FurnitureItem {
   /** Model-specific choices such as door style or chair count. */
   options?: Record<string, string | number | boolean>
   locked?: boolean
+}
+
+/** An electrical, lighting, aircon or data point. */
+export interface Fixture {
+  id: string
+  /** Fixture catalog id, e.g. 'socket-twin' or 'light-down' (see features/electrical/fixtures). */
+  type: string
+  /** Plan position in metres: on the wall face for wall-mounted points, else where it hangs. */
+  x: number
+  y: number
+  /** Degrees, same convention as furniture: wall points face into the room. */
+  rotation: number
+  /** Height of the centre above the floor (m). */
+  height: number
+  /** Wall face it's mounted on, for wall points. */
+  wallId?: string
+  side?: 1 | -1
+  /** For lights: the switch that controls it. */
+  switchId?: string
+  /** Placed by "Suggest points" rather than by hand. */
+  suggested?: boolean
+  note?: string
 }

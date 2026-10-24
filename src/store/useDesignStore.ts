@@ -11,6 +11,7 @@ export const EMPTY_DESIGN: Design = {
   features: {},
   ceilings: {},
   items: [],
+  fixtures: [],
 }
 
 /** Floor finishes and paint used to live in the UI store (Phase 1–3); carry them over once. */
@@ -63,9 +64,9 @@ export const useDesignStore = create<DesignState>()(
     }),
     {
       name: 'redhill-peaks-design',
-      version: 2,
+      version: 3,
       partialize: (s) => ({ design: s.design }),
-      // v2 added furniture.
+      // v2 added furniture, v3 electrical fixtures; fill anything missing from the defaults.
       migrate: (persisted) => {
         const state = persisted as { design: Design }
         state.design = { ...EMPTY_DESIGN, ...state.design }

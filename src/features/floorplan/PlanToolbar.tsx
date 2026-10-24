@@ -1,8 +1,9 @@
-import { AppWindow, DoorOpen, Maximize2, MousePointer2, PenLine, Pentagon, Redo2, Ruler, Undo2 } from 'lucide-react'
+import { AppWindow, DoorOpen, Maximize2, MousePointer2, PenLine, Pentagon, Redo2, Ruler, Undo2, Zap } from 'lucide-react'
 import clsx from 'clsx'
 import { useEditorStore, type Tool } from '../../store/useEditorStore'
 import { usePlanStore } from '../../store/usePlanStore'
 import { useAppStore } from '../../store/useAppStore'
+import { useDesignStore } from '../../store/useDesignStore'
 import { UploadPlanButton } from './UploadPlan'
 
 const TOOLS: { id: Tool; label: string; key: string; icon: typeof PenLine }[] = [
@@ -11,6 +12,7 @@ const TOOLS: { id: Tool; label: string; key: string; icon: typeof PenLine }[] = 
   { id: 'door', label: 'Door', key: 'D', icon: DoorOpen },
   { id: 'window', label: 'Window', key: 'N', icon: AppWindow },
   { id: 'room', label: 'Room', key: 'R', icon: Pentagon },
+  { id: 'electrical', label: 'Electrical', key: 'E', icon: Zap },
   { id: 'calibrate', label: 'Calibrate', key: 'C', icon: Ruler },
 ]
 
@@ -25,16 +27,31 @@ export function PlanToolbar() {
   const setDoorWidth = useEditorStore((s) => s.setDoorWidth)
   const windowWidth = useEditorStore((s) => s.windowWidth)
   const setWindowWidth = useEditorStore((s) => s.setWindowWidth)
-  const canUndo = usePlanStore((s) => s.past.length > 0)
-  const canRedo = usePlanStore((s) => s.future.length > 0)
-  const undo = usePlanStore((s) => s.undo)
-  const redo = usePlanStore((s) => s.redo)
+  // Electrical points live in the design, so undo follows the design while working on them.
+  const electrical = useElectricalUndo()
+  const planCanUndo = usePlanStore((s) => s.past.length > 0)
+  const planCanRedo = usePlanStore((s) => s.future.length > 0)
+  const designCanUndo = useDesignStore((s) => s.past.length > 0)
+  const designCanRedo = useDesignStore((s) => s.future.length > 0)
+  const canUndo = electrical ? designCanUndo : planCanUndo
+  const canRedo = electrical ? designCanRedo : planCanRedo
+  const undo = () => (electrical ? useDesignStore : usePlanStore).getState().undo()
+  const redo = () => (electrical ? useDesignStore : usePlanStore).getState().redo()
   const resetView = useAppStore((s) => s.resetView)
 
   return (
     <>
       {TOOLS.map(({ id, label, key, icon: Icon }) => (
-        <button key={id} type="button" title={`${label} (${key})`} onClick={() => setTool(id)} className={clsx('chip whitespace-nowrap', tool === id && 'chip-on')}>
+        <button
+          key={id}
+          type="button"
+          title={`${label} (${key})`}
+          onClick={() => {
+            setTool(id)
+            if (id === 'electrical') useAppStore.getState().setLeftTab('electrical')
+          }}
+          className={clsx('chip whitespace-nowrap', tool === id && 'chip-on')}
+        >
           <Icon size={14} /> <span className="hidden xl:inline">{label}</span>
         </button>
       ))}
@@ -96,4 +113,11 @@ function WidthInput({ value, onChange }: { value: number; onChange: (v: number) 
 
 function Divider() {
   return <span className="mx-0.5 h-5 w-px shrink-0 bg-line" />
+}
+
+/** True while working on electrical points, when 2D undo/redo should act on the design. */
+export function useElectricalUndo() {
+  const tool = useEditorStore((s) => s.tool)
+  const fixtureSelected = useAppStore((s) => !!s.selectedFixtureId)
+  return tool === 'electrical' || fixtureSelected
 }

@@ -8,6 +8,9 @@ import { useAssetUrl } from '../../lib/assets'
 import { useDesignStore } from '../../store/useDesignStore'
 import { footprint } from '../../lib/furnitureMath'
 import { catalogEntry } from '../furniture/catalog'
+import type { Fixture } from '../../types/design'
+import { placeFixtureAt } from '../../lib/electrical'
+import { FixtureSymbols } from '../electrical/FixtureSymbols'
 import { closestOnSegment, distance, doorSwing, planBounds, polygonArea, roomAnchor, wallLength, wallOutline } from '../../lib/planMath'
 import { addOpening, addRoom, addWall, deleteOpening, deleteRoom, deleteWall, movePoint, newId, updateOpening } from '../../lib/planEdits'
 import { snapPoint, type Snap } from '../../lib/snapping'
@@ -26,6 +29,7 @@ type Gesture =
   | { kind: 'pan'; start: DOMPoint; inverse: DOMMatrix; vb: ViewBox; moved: boolean }
   | { kind: 'vertex'; from: Vec2; base: FloorPlan; moved: boolean }
   | { kind: 'opening'; wallId: string; openingId: string; grab: number; base: FloorPlan; moved: boolean }
+  | { kind: 'fixture'; id: string; moved: boolean }
 
 interface OpeningPreview {
   wall: Wall
@@ -67,6 +71,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const [cursor, setCursor] = useState<Snap | null>(null)
   const [preview, setPreview] = useState<OpeningPreview | null>(null)
   const [calibration, setCalibration] = useState<{ a: Vec2; b: Vec2 } | null>(null)
+  const [fixtureGhost, setFixtureGhost] = useState<Fixture | null>(null)
   const gesture = useRef<Gesture | null>(null)
 
   const opacity = useAppStore((s) => s.underlayOpacity)
@@ -84,6 +89,10 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
 
   const edit = usePlanStore((s) => s.edit)
   const items = useDesignStore((s) => s.design.items)
+  const fixtures = useDesignStore((s) => s.design.fixtures)
+  const showElectrical = useAppStore((s) => s.showElectrical)
+  const selectedFixtureId = useAppStore((s) => s.selectedFixtureId)
+  const fixtureType = useEditorStore((s) => s.fixtureType)
   const underlayUrl = useAssetUrl(plan.underlay?.assetId) ?? plan.underlay?.src
 
   const pxPerM = Math.min(size.w / vb.w, size.h / vb.h) || 50
@@ -121,7 +130,8 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   useEffect(() => {
     setCursor(null)
     setPreview(null)
-  }, [tool])
+    setFixtureGhost(null)
+  }, [tool, fixtureType])
 
   const toPlan = (e: { clientX: number; clientY: number }): Vec2 => {
     const ctm = svgRef.current!.getScreenCTM()!
@@ -182,6 +192,13 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         app.selectOpening({ wallId: pv.wall.id, openingId: opening.id })
         return
       }
+      case 'electrical': {
+        const fx = placeFixtureAt(fixtureType, raw, plan, tolerance * 1.5)
+        if (!fx) return
+        useDesignStore.getState().edit((d) => ({ ...d, fixtures: [...d.fixtures, fx] }))
+        app.selectFixture(fx.id)
+        return
+      }
       case 'calibrate': {
         const p = snap()
         if (!last) return setDraft([p])
@@ -195,8 +212,17 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (e.button === 2) return
-    const handle = (e.target as Element).closest('[data-handle]')
     const svg = e.currentTarget
+    // Electrical points: select, and drag to move (along walls for wall points).
+    const fixtureId = (e.target as Element).closest('[data-fixture]')?.getAttribute('data-fixture')
+    if (fixtureId && e.button === 0 && (tool === 'select' || tool === 'electrical')) {
+      useAppStore.getState().selectFixture(fixtureId)
+      useDesignStore.getState().checkpoint()
+      gesture.current = { kind: 'fixture', id: fixtureId, moved: false }
+      svg.setPointerCapture(e.pointerId)
+      return
+    }
+    const handle = (e.target as Element).closest('[data-handle]')
     if (handle && e.button === 0) {
       const base = usePlanStore.getState().plan
       usePlanStore.getState().checkpoint()
@@ -245,7 +271,20 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       return
     }
 
-    if (tool === 'wall' || tool === 'room' || tool === 'calibrate') {
+    if (g?.kind === 'fixture') {
+      const f = useDesignStore.getState().design.fixtures.find((x) => x.id === g.id)
+      if (!f) return
+      const moved = placeFixtureAt(f.type, raw, plan, tolerance * 2)
+      if (!moved) return
+      g.moved = true
+      const patch = { x: moved.x, y: moved.y, rotation: moved.rotation, wallId: moved.wallId, side: moved.side }
+      useDesignStore.getState().edit((d) => ({ ...d, fixtures: d.fixtures.map((x) => (x.id === g.id ? { ...x, ...patch } : x)) }), { history: false })
+      return
+    }
+
+    if (tool === 'electrical') {
+      setFixtureGhost(placeFixtureAt(fixtureType, raw, plan, tolerance * 1.5))
+    } else if (tool === 'wall' || tool === 'room' || tool === 'calibrate') {
       setCursor(snapPoint(raw, plan, tolerance, { from: draft[draft.length - 1], extra: draft, disabled: e.altKey }))
     } else if (tool === 'door' || tool === 'window') {
       setPreview(previewOpening(raw, plan, tolerance, tool === 'door' ? doorWidth : windowWidth))
@@ -258,6 +297,10 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     if (!g) return
     if (g.kind === 'pan') {
       if (!g.moved) handleClick(toPlan(e), e)
+      return
+    }
+    if (g.kind === 'fixture') {
+      if (!g.moved) useDesignStore.getState().dropCheckpoint()
       return
     }
     setCursor(null)
@@ -275,15 +318,17 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       const planStore = usePlanStore.getState()
       const mod = e.ctrlKey || e.metaKey
 
+      // Electrical points live in the design, so undo follows the design while working on them.
+      const history = editor.tool === 'electrical' || app.selectedFixtureId ? useDesignStore.getState() : planStore
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault()
-        if (e.shiftKey) planStore.redo()
-        else planStore.undo()
+        if (e.shiftKey) history.redo()
+        else history.undo()
         return
       }
       if (mod && e.key.toLowerCase() === 'y') {
         e.preventDefault()
-        planStore.redo()
+        history.redo()
         return
       }
       if (mod || e.altKey) return
@@ -301,7 +346,14 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         return
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (app.selectedOpening) {
+        if (app.selectedFixtureId) {
+          const id = app.selectedFixtureId
+          // Lights controlled by a deleted switch become unswitched rather than dangling.
+          useDesignStore.getState().edit((d) => ({
+            ...d,
+            fixtures: d.fixtures.filter((f) => f.id !== id).map((f) => (f.switchId === id ? { ...f, switchId: undefined } : f)),
+          }))
+        } else if (app.selectedOpening) {
           const { wallId, openingId } = app.selectedOpening
           planStore.edit((p) => deleteOpening(p, wallId, openingId))
         } else if (app.selectedWallId) {
@@ -315,7 +367,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         app.clearSelection()
         return
       }
-      const tools: Record<string, typeof editor.tool> = { v: 'select', w: 'wall', d: 'door', n: 'window', r: 'room', c: 'calibrate' }
+      const tools: Record<string, typeof editor.tool> = { v: 'select', w: 'wall', d: 'door', n: 'window', r: 'room', c: 'calibrate', e: 'electrical' }
       const next = tools[e.key.toLowerCase()]
       if (next) editor.setTool(next)
     }
@@ -458,6 +510,8 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
             </g>
           )
         })}
+
+        {showElectrical && <FixtureSymbols fixtures={fixtures} selectedId={selectedFixtureId} px={px} ghost={tool === 'electrical' ? fixtureGhost : null} />}
 
         {/* Selection handles */}
         {tool === 'select' && selectedWall && (

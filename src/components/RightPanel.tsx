@@ -7,6 +7,7 @@ import { DESIGNER_NOTES } from '../data/designerNotes'
 import { DrawingPanel, OpeningInspector, RoomEditFields, WallInspector } from '../features/floorplan/Inspector'
 import { FlatDesign, RoomDesign } from '../features/design/DesignPanels'
 import { ItemInspector } from '../features/furniture/ItemInspector'
+import { FixtureInspector } from '../features/electrical/FixtureInspector'
 import { useDesignStore } from '../store/useDesignStore'
 import { KIND_COLOR } from './LeftPanel'
 
@@ -17,12 +18,14 @@ export function RightPanel({ plan }: { plan: FloorPlan }) {
   const selectedOpening = useAppStore((s) => s.selectedOpening)
   const selectedItemId = useAppStore((s) => s.selectedItemId)
   const item = useDesignStore((s) => s.design.items.find((it) => it.id === selectedItemId))
+  const selectedFixtureId = useAppStore((s) => s.selectedFixtureId)
+  const fixture = useDesignStore((s) => s.design.fixtures.find((f) => f.id === selectedFixtureId))
 
   const room = plan.rooms.find((r) => r.id === selectedRoomId)
   const wall = plan.walls.find((w) => w.id === selectedWallId)
   const openingWall = selectedOpening ? plan.walls.find((w) => w.id === selectedOpening.wallId) : undefined
   const opening = openingWall?.openings?.find((o) => o.id === selectedOpening?.openingId)
-  const hasSelection = !!(room || wall || opening || item)
+  const hasSelection = !!(room || wall || opening || item || fixture)
   // In the walkthrough the whole-flat panel would only block the view.
   if (mode === 'walk' && !hasSelection) return null
 
@@ -34,7 +37,9 @@ export function RightPanel({ plan }: { plan: FloorPlan }) {
         !hasSelection && 'hidden md:flex md:bottom-auto md:max-h-[calc(100%-10rem)]',
       )}
     >
-      {item ? (
+      {fixture ? (
+        <FixtureInspector fixture={fixture} plan={plan} />
+      ) : item ? (
         <ItemInspector item={item} plan={plan} />
       ) : opening && openingWall ? (
         <OpeningInspector wall={openingWall} opening={opening} />
