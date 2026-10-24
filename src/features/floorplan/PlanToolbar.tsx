@@ -27,7 +27,7 @@ export function PlanToolbar() {
   const setDoorWidth = useEditorStore((s) => s.setDoorWidth)
   const windowWidth = useEditorStore((s) => s.windowWidth)
   const setWindowWidth = useEditorStore((s) => s.setWindowWidth)
-  // Electrical points live in the design, so undo follows the design while working on them.
+  // Furniture and electrical points live in the design, so undo follows it while working on them.
   const electrical = useElectricalUndo()
   const planCanUndo = usePlanStore((s) => s.past.length > 0)
   const planCanRedo = usePlanStore((s) => s.future.length > 0)
@@ -115,9 +115,9 @@ function Divider() {
   return <span className="mx-0.5 h-5 w-px shrink-0 bg-line" />
 }
 
-/** True while working on electrical points, when 2D undo/redo should act on the design. */
+/** True while working on furniture or electrical points, when 2D undo/redo act on the design. */
 export function useElectricalUndo() {
   const tool = useEditorStore((s) => s.tool)
-  const fixtureSelected = useAppStore((s) => !!s.selectedFixtureId)
-  return tool === 'electrical' || fixtureSelected
+  const designSelected = useAppStore((s) => !!s.selectedFixtureId || !!s.selectedItemId)
+  return tool === 'electrical' || designSelected
 }

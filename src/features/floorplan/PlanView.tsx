@@ -6,7 +6,10 @@ import { usePlanStore } from '../../store/usePlanStore'
 import { useEditorStore } from '../../store/useEditorStore'
 import { useAssetUrl } from '../../lib/assets'
 import { useDesignStore } from '../../store/useDesignStore'
-import { footprint } from '../../lib/furnitureMath'
+import { snapToWalls } from '../../lib/furnitureMath'
+import { FurniturePlanLayer } from '../furniture/FurniturePlanLayer'
+import { addItem, duplicateItem, removeItem, rotateItem, updateItem } from '../furniture/itemActions'
+import { FURNITURE_MIME, sceneBridge } from '../scene/sceneBridge'
 import { catalogEntry } from '../furniture/catalog'
 import type { Fixture } from '../../types/design'
 import { placeFixtureAt } from '../../lib/electrical'
@@ -30,6 +33,8 @@ type Gesture =
   | { kind: 'vertex'; from: Vec2; base: FloorPlan; moved: boolean }
   | { kind: 'opening'; wallId: string; openingId: string; grab: number; base: FloorPlan; moved: boolean }
   | { kind: 'fixture'; id: string; moved: boolean }
+  | { kind: 'item'; id: string; grab: Vec2; moved: boolean }
+  | { kind: 'rotate'; id: string; moved: boolean }
 
 interface OpeningPreview {
   wall: Wall
@@ -92,6 +97,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const fixtures = useDesignStore((s) => s.design.fixtures)
   const showElectrical = useAppStore((s) => s.showElectrical)
   const selectedFixtureId = useAppStore((s) => s.selectedFixtureId)
+  const selectedItemId = useAppStore((s) => s.selectedItemId)
   const fixtureType = useEditorStore((s) => s.fixtureType)
   const underlayUrl = useAssetUrl(plan.underlay?.assetId) ?? plan.underlay?.src
 
@@ -100,6 +106,16 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const px = (n: number) => n / pxPerM
 
   useEffect(() => setVb(fitBox(usePlanStore.getState().plan)), [resetNonce])
+
+  // Lets "add from library" drop pieces in the middle of what you're looking at.
+  const vbRef = useRef(vb)
+  vbRef.current = vb
+  useEffect(() => {
+    sceneBridge.planCentre = () => [vbRef.current.x + vbRef.current.w / 2, vbRef.current.y + vbRef.current.h / 2]
+    return () => {
+      sceneBridge.planCentre = undefined
+    }
+  }, [])
 
   useEffect(() => {
     const el = svgRef.current
@@ -156,6 +172,8 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     switch (tool) {
       case 'select': {
         const hit = document.elementFromPoint(e.clientX, e.clientY)
+        const itemId = hit?.closest('[data-item]')?.getAttribute('data-item')
+        if (itemId) return app.selectItem(itemId)
         const opening = hit?.closest('[data-opening]')?.getAttribute('data-opening')
         const wall = hit?.closest('[data-wall]')?.getAttribute('data-wall')
         const room = hit?.closest('[data-room]')?.getAttribute('data-room')
@@ -214,6 +232,22 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     if (e.button === 2) return
     const svg = e.currentTarget
     // Electrical points: select, and drag to move (along walls for wall points).
+    // Furniture: the rotate handle, then the piece itself (Select tool only).
+    if (tool === 'select' && e.button === 0) {
+      const rotateId = (e.target as Element).closest('[data-rotate]')?.getAttribute('data-rotate')
+      const itemId = rotateId ?? (e.target as Element).closest('[data-item]')?.getAttribute('data-item')
+      const item = itemId ? useDesignStore.getState().design.items.find((it) => it.id === itemId) : undefined
+      if (item) {
+        useAppStore.getState().selectItem(item.id)
+        if (!item.locked) {
+          useDesignStore.getState().checkpoint()
+          const p = toPlan(e)
+          gesture.current = rotateId ? { kind: 'rotate', id: item.id, moved: false } : { kind: 'item', id: item.id, grab: [item.x - p[0], item.y - p[1]], moved: false }
+        }
+        svg.setPointerCapture(e.pointerId)
+        return
+      }
+    }
     const fixtureId = (e.target as Element).closest('[data-fixture]')?.getAttribute('data-fixture')
     if (fixtureId && e.button === 0 && (tool === 'select' || tool === 'electrical')) {
       useAppStore.getState().selectFixture(fixtureId)
@@ -271,6 +305,24 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       return
     }
 
+    if (g?.kind === 'item' || g?.kind === 'rotate') {
+      const item = useDesignStore.getState().design.items.find((it) => it.id === g.id)
+      if (!item) return
+      g.moved = true
+      if (g.kind === 'item') {
+        const next = { ...item, x: raw[0] + g.grab[0], y: raw[1] + g.grab[1] }
+        // Hold Alt to place freely; otherwise pieces tuck flush against nearby walls.
+        const free = e.altKey || catalogEntry(item.type)?.layer === 'rug'
+        const [x, y] = free ? [next.x, next.y] : snapToWalls(next, plan)
+        updateItem(item.id, { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 }, false)
+      } else {
+        // Face the cursor: front (-sin θ, cos θ) points from the centre to the pointer.
+        const deg = (Math.atan2(-(raw[0] - item.x), raw[1] - item.y) * 180) / Math.PI
+        const step = e.altKey ? 1 : 15
+        updateItem(item.id, { rotation: ((Math.round(deg / step) * step) % 360 + 360) % 360 }, false)
+      }
+      return
+    }
     if (g?.kind === 'fixture') {
       const f = useDesignStore.getState().design.fixtures.find((x) => x.id === g.id)
       if (!f) return
@@ -299,7 +351,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       if (!g.moved) handleClick(toPlan(e), e)
       return
     }
-    if (g.kind === 'fixture') {
+    if (g.kind === 'fixture' || g.kind === 'item' || g.kind === 'rotate') {
       if (!g.moved) useDesignStore.getState().dropCheckpoint()
       return
     }
@@ -319,11 +371,17 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       const mod = e.ctrlKey || e.metaKey
 
       // Electrical points live in the design, so undo follows the design while working on them.
-      const history = editor.tool === 'electrical' || app.selectedFixtureId ? useDesignStore.getState() : planStore
+      // Furniture and electrical points live in the design; walls and rooms in the plan.
+      const history = editor.tool === 'electrical' || app.selectedFixtureId || app.selectedItemId ? useDesignStore.getState() : planStore
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault()
         if (e.shiftKey) history.redo()
         else history.undo()
+        return
+      }
+      if (mod && e.key.toLowerCase() === 'd' && app.selectedItemId) {
+        e.preventDefault()
+        duplicateItem(app.selectedItemId)
         return
       }
       if (mod && e.key.toLowerCase() === 'y') {
@@ -346,7 +404,9 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         return
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (app.selectedFixtureId) {
+        if (app.selectedItemId) {
+          removeItem(app.selectedItemId)
+        } else if (app.selectedFixtureId) {
           const id = app.selectedFixtureId
           // Lights controlled by a deleted switch become unswitched rather than dangling.
           useDesignStore.getState().edit((d) => ({
@@ -366,6 +426,15 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         e.preventDefault()
         app.clearSelection()
         return
+      }
+      if (app.selectedItemId) {
+        // With a piece selected, Q/E rotate it (instead of picking tools) and Ctrl+D copies it.
+        const k = e.key.toLowerCase()
+        if (k === 'q' || k === 'e') {
+          e.preventDefault()
+          rotateItem(app.selectedItemId, k === 'q' ? -15 : 15)
+          return
+        }
       }
       const tools: Record<string, typeof editor.tool> = { v: 'select', w: 'wall', d: 'door', n: 'window', r: 'room', c: 'calibrate', e: 'electrical' }
       const next = tools[e.key.toLowerCase()]
@@ -393,7 +462,19 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const drawing = tool !== 'select'
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      className="relative h-full w-full"
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(FURNITURE_MIME)) e.preventDefault()
+      }}
+      onDrop={(e) => {
+        const type = e.dataTransfer.getData(FURNITURE_MIME)
+        if (!type) return
+        e.preventDefault()
+        useEditorStore.getState().setTool('select')
+        addItem(type, ...toPlan(e))
+      }}
+    >
       <svg
         ref={svgRef}
         viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
@@ -485,17 +566,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
           }),
         )}
 
-        {/* Furniture footprints for reference; they're moved in the 3D view. */}
-        {items.map((it) => (
-          <polygon
-            key={it.id}
-            points={points(footprint(it))}
-            pointerEvents="none"
-            className="fill-ink/[0.06] stroke-ink/40"
-            strokeWidth={px(1)}
-            strokeDasharray={catalogEntry(it.type)?.layer === 'floor' ? undefined : `${px(4)} ${px(3)}`}
-          />
-        ))}
+        <FurniturePlanLayer plan={plan} items={items} selectedId={selectedItemId} interactive={tool === 'select'} px={px} />
 
         {plan.rooms.map((room) => {
           const [x, y] = roomAnchor(room)

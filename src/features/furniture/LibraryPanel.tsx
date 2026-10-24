@@ -8,7 +8,7 @@ import { redhillPeaks } from '../../data/redhillPeaks'
 import { starterLayout } from '../../data/starterLayout'
 import { CATALOG, CATEGORIES, type Category } from './catalog'
 import { addItem } from './itemActions'
-import { FURNITURE_MIME, viewCentre } from '../scene/sceneBridge'
+import { FURNITURE_MIME, sceneBridge, viewCentre } from '../scene/sceneBridge'
 
 const ICONS: Record<Category, typeof Sofa> = {
   Living: Sofa,
@@ -32,17 +32,15 @@ export function LibraryPanel({ plan }: { plan: FloorPlan }) {
 
   const add = (type: string) => {
     const app = useAppStore.getState()
-    if (app.mode === 'plan') app.setMode('orbit')
     const b = planBounds(plan)
-    const [x, y] = viewCentre() ?? [b.cx, b.cy]
+    // Add in the middle of whichever view is showing, 2D or 3D.
+    const [x, y] = (app.mode === 'plan' ? sceneBridge.planCentre?.() : viewCentre()) ?? [b.cx, b.cy]
     addItem(type, x, y)
   }
 
   const furnish = () => {
     useDesignStore.getState().edit((d) => ({ ...d, items: starterLayout() }))
-    const app = useAppStore.getState()
-    if (app.mode === 'plan') app.setMode('orbit')
-    app.resetView()
+    useAppStore.getState().resetView()
   }
 
   return (
@@ -62,7 +60,7 @@ export function LibraryPanel({ plan }: { plan: FloorPlan }) {
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search sofas, beds, wardrobes…" className="h-9 flex-1 bg-transparent text-sm outline-none placeholder:text-muted" />
       </label>
 
-      <p className="px-1 text-xs text-muted">Drag a piece onto the 3D view, or click + to add it in the middle of the view.</p>
+      <p className="px-1 text-xs text-muted">Drag a piece onto the 2D plan or 3D view, or click + to add it in the middle of the view.</p>
 
       {CATEGORIES.map((cat) => {
         const entries = matches.filter((e) => e.category === cat)

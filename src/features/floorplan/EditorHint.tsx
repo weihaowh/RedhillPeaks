@@ -2,7 +2,7 @@ import type { FloorPlan } from '../../types/plan'
 import { useEditorStore, type Tool } from '../../store/useEditorStore'
 
 const HINTS: Record<Tool, [idle: string, drawing?: string]> = {
-  select: ['Click a wall, door, window or room to edit it. Drag the round handles to reshape it. Drag empty space to pan, and scroll to zoom.'],
+  select: ['Click a wall, door, window, room or piece of furniture to edit it. Drag furniture to move it, and the round handle to rotate it. Drag empty space to pan, scroll to zoom.'],
   wall: [
     'Click to start a wall. It snaps to corners, 45° angles, other walls and a 50 mm grid.',
     'Click to add the next corner. Click the same point again, or press Enter, to finish. Hold Alt to turn snapping off.',

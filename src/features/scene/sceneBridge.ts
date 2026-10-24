@@ -16,6 +16,8 @@ export const sceneBridge: {
   getState?: () => RootState
   /** Plan-space position of the world origin (the flat is centred on it). */
   offset: Vec2
+  /** Centre of the 2D plan view, while it's showing. */
+  planCentre?: () => Vec2
 } = { offset: [0, 0] }
 
 /** Drag-and-drop type for furniture coming from the library panel. */
