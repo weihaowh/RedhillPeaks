@@ -1,0 +1,10 @@
+# Regenerable or heavy: the take is ~120 MB (over GitHub's 100 MB file limit); rebuild it with capture/capture.mjs.
+assets/footage/app-take.mp4
+capture/node_modules/
+capture/stills/
+capture/*.log
+capture/ffpath.sh
+.hyperframes/
+.media/
+renders/
+*.mp4

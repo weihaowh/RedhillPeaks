@@ -1,0 +1,129 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      font-family: Inter, sans-serif;
+      color: var(--ink, #181a1d);
+    }
+    #end-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--stage, #f6f3ee);
+    }
+    #end-lockup {
+      position: absolute;
+      left: 0;
+      width: 1920px;
+      top: 378px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+    #end-mark {
+      width: 112px;
+      height: 112px;
+      border-radius: 26px;
+      background: var(--accent, #be6c3c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #end-mark svg {
+      width: 60px;
+      height: 60px;
+      overflow: visible;
+    }
+    #end-mark path {
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    #end-wordmark {
+      font-size: 60px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      white-space: nowrap;
+    }
+    #end-wordmark-sub {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--muted, #6c7179);
+      letter-spacing: -0.01em;
+      margin-top: 4px;
+    }
+    #end-line {
+      position: absolute;
+      left: 0;
+      width: 1920px;
+      top: 560px;
+      text-align: center;
+      font-size: 54px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    #end-line .w {
+      display: inline-block;
+      opacity: 0;
+    }
+    #end-line .accent {
+      color: var(--accent, #be6c3c);
+    }
+    #end-url {
+      position: absolute;
+      left: 0;
+      width: 1920px;
+      top: 660px;
+      text-align: center;
+      font-size: 30px;
+      font-weight: 500;
+      color: var(--ink, #181a1d);
+      letter-spacing: -0.01em;
+    }
+    #end-small {
+      position: absolute;
+      left: 0;
+      width: 1920px;
+      top: 922px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 500;
+      color: var(--muted, #6c7179);
+    }
+  </style>
+  <div data-hf-id="hf-32ii" id="root" data-composition-id="endcard" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-fwzw" id="end-ground"></div>
+    <div data-hf-id="hf-u2tv" id="end-lockup">
+      
+      <div data-hf-id="hf-lnoc" id="end-words">
+        <div data-hf-studio-original-inline-translate="" style="translate: 0px 0px" data-hf-id="hf-8plv" id="end-wordmark" data-var-text="productName">Redhill Peaks Studio</div>
+        <div style="text-align: center" data-hf-id="hf-crrx" id="end-wordmark-sub" data-var-text="productSub">3D interior design for our BTO flat</div>
+      </div>
+    </div>
+    <div data-hf-id="hf-kbl7" id="end-line">
+      <span data-hf-id="hf-qgq3" class="w">Plan</span> <span data-hf-id="hf-3rmp" class="w">it.</span> <span data-hf-id="hf-w1kz" class="w accent">Walk</span> <span data-hf-id="hf-1n23" class="w accent">it.</span> <span data-hf-id="hf-aap4" class="w">Build</span> <span data-hf-id="hf-iw1h" class="w">it.</span>
+    </div>
+    <div data-hf-id="hf-aw38" id="end-url" data-var-text="url">weihaowh.github.io/RedhillPeaks</div>
+    <div data-hf-studio-original-inline-translate="" style="translate: 0px -411px" data-hf-id="hf-d3vf" id="end-small" data-layout-ignore="" data-var-text="smallPrint">Planning aid. Prices are indicative; HDB checks are guidance, not approval.</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    // The stage floods in over the shrinking report.
+    tl.fromTo("#end-ground", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.inOut" }, 0.15);
+
+    // The name wipes in.
+    tl.fromTo("#end-words", { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.5, ease: "power3.out" }, 1.05);
+
+    // The claim, word by word, then the address.
+    tl.fromTo("#end-line .w", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.13, ease: "expo.out", stagger: 0.09 }, 1.65);
+    tl.fromTo("#end-url", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "expo.out" }, 2.35);
+    tl.fromTo("#end-small", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 2.55);
+
+    window.__timelines["endcard"] = tl;
+  </script>
+</template>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"chipKicker","type":"string","label":"Plan chip: small line","default":"Blk 147A Redhill Peaks · 4-Room"},
+    {"id":"chipText","type":"string","label":"Plan chip: main line","default":"Upload floor plan"},
+    {"id":"productName","type":"string","label":"End card: name","default":"Redhill Peaks Studio"},
+    {"id":"productSub","type":"string","label":"End card: subtitle","default":"3D interior design for our BTO flat"},
+    {"id":"url","type":"string","label":"End card: URL","default":"weihaowh.github.io/RedhillPeaks"},
+    {"id":"smallPrint","type":"string","label":"End card: small print","default":"Planning aid. Prices are indicative; HDB checks are guidance, not approval."},
+    {"id":"accent","type":"color","label":"Accent (the app logo colour)","default":"#be6c3c"},
+    {"id":"ink","type":"color","label":"Ink","default":"#181a1d"},
+    {"id":"stage","type":"color","label":"End card ground (the 3D stage)","default":"#f6f3ee"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --accent: #be6c3c;
+        --ink: #181a1d;
+        --muted: #6c7179;
+        --stage: #f6f3ee;
+        --paper: #f2f1ee;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--stage);
+        font-family: Inter, sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+      }
+      #plan {
+        z-index: 3;
+      }
+      #take {
+        z-index: 2;
+      }
+      #endcard {
+        z-index: 4;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-adpn" id="root" data-composition-id="main" data-start="0" data-duration="44.3" data-width="1920" data-height="1080">
+      <!-- Scenes: the paper plan, the one take in the real app (film = footage + 3.0 s), the end card. -->
+      <div data-hf-id="hf-sg3m" id="plan" data-composition-id="plan" data-composition-src="compositions/plan.html" data-start="0" data-duration="4" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-mdn6" id="take" data-composition-id="take" data-composition-src="compositions/take.html" data-start="3" data-duration="37.4" data-track-index="2" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-1y03" id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html" data-start="39.9" data-duration="4.4" data-track-index="3" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+
+      <!-- Music: MusicGen felt-piano bed (capture/music.py + music_b.py, seeds 7 / 5). Trimmed 2.08 s in so the
+           full second half (28.08 s in the file) enters at 26.0 s, as the dive lands and the walk begins. -->
+      <audio id="music-bed" class="clip" src="assets/music/bed.mp3" data-start="0" data-duration="43.9" data-media-start="2.08" data-volume="0.6" data-fade-in="0.4" data-fade-out="1.8" data-track-index="9"></audio>
+
+      <!-- Pencil on paper while the walls are traced. -->
+      <audio data-hf-id="hf-cfkq" id="sfx-pencil-1" class="clip" src="assets/sfx/pencil.mp3" data-start="0.45" data-duration="1.05" data-volume="0.55" data-track-index="10"></audio>
+      <audio data-hf-id="hf-qbs4" id="sfx-pencil-2" class="clip" src="assets/sfx/pencil.mp3" data-start="1.45" data-duration="1.05" data-volume="0.45" data-track-index="11"></audio>
+      <audio data-hf-id="hf-nj4o" id="sfx-pencil-3" class="clip" src="assets/sfx/pencil.mp3" data-start="2.4" data-duration="0.55" data-volume="0.4" data-fade-out="0.2" data-track-index="10"></audio>
+
+      <!-- The walls rise out of the drawing. -->
+      <audio data-hf-id="hf-ba6d" id="sfx-rise" class="clip" src="assets/sfx/whoosh-soft.mp3" data-start="3.9" data-duration="0.95" data-volume="0.6" data-track-index="12"></audio>
+
+      <!-- Real clicks (each lands one frame after the click on screen; the files peak at 0.073 s). -->
+      <audio data-hf-id="hf-qqjh" id="sfx-click-structural" class="clip" src="assets/sfx/click.mp3" data-start="8.26" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-2p2e" id="sfx-click-hack" class="clip" src="assets/sfx/click-soft.mp3" data-start="9.56" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-h071" id="sfx-click-wall" class="clip" src="assets/sfx/click.mp3" data-start="10.86" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-qnop" id="sfx-hack" class="clip" src="assets/sfx/wall-removed.mp3" data-start="10.69" data-duration="1.4" data-volume="0.6" data-fade-out="0.6" data-track-index="14"></audio>
+      <audio data-hf-id="hf-d3cd" id="sfx-click-build" class="clip" src="assets/sfx/click-soft.mp3" data-start="12.16" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-dlm7" id="sfx-click-glass" class="clip" src="assets/sfx/click.mp3" data-start="12.86" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-fynr" id="sfx-click-g1" class="clip" src="assets/sfx/click-soft.mp3" data-start="13.66" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-5rf5" id="sfx-click-g2" class="clip" src="assets/sfx/click.mp3" data-start="14.36" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-38np" id="sfx-click-structural-off" class="clip" src="assets/sfx/click-soft.mp3" data-start="15.36" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-ucnu" id="sfx-click-layouts" class="clip" src="assets/sfx/click.mp3" data-start="16.26" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-m8yu" id="sfx-click-scheme" class="clip" src="assets/sfx/click-soft.mp3" data-start="16.96" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-uovs" id="sfx-furnish" class="clip" src="assets/sfx/pop.mp3" data-start="16.95" data-duration="0.72" data-volume="0.4" data-track-index="15"></audio>
+      <audio data-hf-id="hf-hg6y" id="sfx-click-japandi" class="clip" src="assets/sfx/click.mp3" data-start="18.46" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-ypbn" id="sfx-click-sun" class="clip" src="assets/sfx/click-soft.mp3" data-start="20.06" data-duration="0.37" data-volume="0.45" data-track-index="13"></audio>
+      <audio data-hf-id="hf-ghjs" id="sfx-click-grab" class="clip" src="assets/sfx/click-soft.mp3" data-start="20.73" data-duration="0.37" data-volume="0.35" data-track-index="13"></audio>
+      <!-- The ceiling lights come on (auto, at sunset) at footage 19.93 s. -->
+      <audio data-hf-id="hf-whmq" id="sfx-lights" class="clip" src="assets/sfx/light-switch.mp3" data-start="22.91" data-duration="0.5" data-volume="0.55" data-track-index="16"></audio>
+      <audio data-hf-id="hf-21cd" id="sfx-click-walk" class="clip" src="assets/sfx/click.mp3" data-start="23.83" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-68el" id="sfx-dive" class="clip" src="assets/sfx/whoosh.mp3" data-start="24.35" data-duration="0.58" data-volume="0.5" data-track-index="12"></audio>
+
+      <!-- Footsteps through the walk, about 1.8 a second. -->
+      <audio data-hf-id="hf-ds6b" id="sfx-step-01" class="clip" src="assets/sfx/step-wood.mp3" data-start="26.6" data-duration="0.3" data-volume="0.22" data-track-index="17"></audio>
+      <audio data-hf-id="hf-7rdt" id="sfx-step-02" class="clip" src="assets/sfx/step-wood.mp3" data-start="27.15" data-duration="0.3" data-volume="0.3" data-track-index="18"></audio>
+      <audio data-hf-id="hf-bq2f" id="sfx-step-03" class="clip" src="assets/sfx/step-wood.mp3" data-start="27.7" data-duration="0.3" data-volume="0.24" data-track-index="17"></audio>
+      <audio data-hf-id="hf-650b" id="sfx-step-04" class="clip" src="assets/sfx/step-wood.mp3" data-start="28.25" data-duration="0.3" data-volume="0.3" data-track-index="18"></audio>
+      <audio data-hf-id="hf-7kd5" id="sfx-step-05" class="clip" src="assets/sfx/step-wood.mp3" data-start="28.8" data-duration="0.3" data-volume="0.24" data-track-index="17"></audio>
+      <audio data-hf-id="hf-k00h" id="sfx-step-06" class="clip" src="assets/sfx/step-wood.mp3" data-start="29.35" data-duration="0.3" data-volume="0.3" data-track-index="18"></audio>
+      <audio data-hf-id="hf-6rr7" id="sfx-step-07" class="clip" src="assets/sfx/step-wood.mp3" data-start="29.9" data-duration="0.3" data-volume="0.24" data-track-index="17"></audio>
+      <audio data-hf-id="hf-qbis" id="sfx-step-08" class="clip" src="assets/sfx/step-wood.mp3" data-start="30.45" data-duration="0.3" data-volume="0.3" data-track-index="18"></audio>
+      <audio data-hf-id="hf-t6mv" id="sfx-step-09" class="clip" src="assets/sfx/step-wood.mp3" data-start="31.0" data-duration="0.3" data-volume="0.24" data-track-index="17"></audio>
+      <audio data-hf-id="hf-9rdp" id="sfx-step-10" class="clip" src="assets/sfx/step-wood.mp3" data-start="31.55" data-duration="0.3" data-volume="0.3" data-track-index="18"></audio>
+      <audio data-hf-id="hf-oxi8" id="sfx-step-11" class="clip" src="assets/sfx/step-wood.mp3" data-start="32.1" data-duration="0.3" data-volume="0.24" data-track-index="17"></audio>
+      <audio data-hf-id="hf-dpis" id="sfx-step-12" class="clip" src="assets/sfx/step-wood.mp3" data-start="32.65" data-duration="0.3" data-volume="0.28" data-track-index="18"></audio>
+      <audio data-hf-id="hf-ri4y" id="sfx-step-13" class="clip" src="assets/sfx/step-wood.mp3" data-start="33.2" data-duration="0.3" data-volume="0.22" data-track-index="17"></audio>
+      <audio data-hf-id="hf-mhps" id="sfx-step-14" class="clip" src="assets/sfx/step-wood.mp3" data-start="33.8" data-duration="0.3" data-volume="0.2" data-track-index="18"></audio>
+
+      <!-- The report, then the name on the end card. -->
+      <audio data-hf-id="hf-21cn" id="sfx-click-report" class="clip" src="assets/sfx/click.mp3" data-start="36.46" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-ir26" id="sfx-click-hdb" class="clip" src="assets/sfx/click-soft.mp3" data-start="38.46" data-duration="0.37" data-volume="0.5" data-track-index="13"></audio>
+      <audio data-hf-id="hf-6d04" id="sfx-out" class="clip" src="assets/sfx/whoosh-soft.mp3" data-start="39.65" data-duration="0.95" data-volume="0.45" data-track-index="12"></audio>
+      <audio data-hf-id="hf-3dco" id="sfx-mark" class="clip" src="assets/sfx/impact-bass-1.mp3" data-start="40.9" data-duration="2.1" data-volume="0.16" data-fade-out="0.8" data-track-index="19"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

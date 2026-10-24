@@ -1,0 +1,9 @@
+{
+  "name": "redhill-film-capture",
+  "private": true,
+  "type": "module",
+  "description": "Drives Redhill Peaks Studio frame by frame and saves the real UI as footage for the HyperFrames film.",
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}
