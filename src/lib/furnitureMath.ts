@@ -189,9 +189,11 @@ export function itemWarnings(item: FurnitureItem, items: FurnitureItem[], plan: 
     // Small pieces (lamps, side tables, chairs) aren't what people walk around, and gaps under
     // 300 mm aren't walkways at all (a sofa nudged off a wall), so only flag 300–600 mm gaps
     // beside sizeable furniture.
+    // A coffee table sits a deliberate 400 mm from the sofa, so gaps to it aren't walkways either.
     const { width, depth } = footprintOf(item)
-    if (Math.min(width, depth) >= 0.5 && width * depth >= 0.4) {
-      const tight = clearances(item, items, plan).filter((c) => c.distance >= WALKWAY_GAP && c.distance < WALKWAY_MIN)
+    if (!catalogEntry(item.type)?.reach && Math.min(width, depth) >= 0.5 && width * depth >= 0.4) {
+      const walkable = items.filter((o) => !catalogEntry(o.type)?.reach)
+      const tight = clearances(item, walkable, plan).filter((c) => c.distance >= WALKWAY_GAP && c.distance < WALKWAY_MIN)
       for (const c of tight) {
         warnings.push({ kind: 'walkway', message: `Tight walkway: ${Math.round(c.distance * 1000)} mm on the ${c.side} (600 minimum, 800 comfortable)` })
       }

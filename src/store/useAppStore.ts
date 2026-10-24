@@ -5,7 +5,7 @@ import type { SunSettings } from '../lib/sun'
 
 export type ViewMode = 'plan' | 'orbit' | 'walk'
 export type Theme = 'light' | 'dark'
-export type LeftTab = 'rooms' | 'library' | 'presets' | 'electrical'
+export type LeftTab = 'rooms' | 'library' | 'layouts' | 'presets' | 'electrical'
 export type WallMode = 'full' | 'cutaway'
 export type Quality = 'draft' | 'high' | 'ultra'
 export type LightsMode = 'auto' | 'on' | 'off'

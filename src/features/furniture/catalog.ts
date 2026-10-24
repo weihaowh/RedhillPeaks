@@ -33,6 +33,8 @@ export interface CatalogEntry {
   options?: OptionDef[]
   /** Default height above the floor for wall-mounted pieces. */
   elevation?: number
+  /** A low table you reach across from a seat: gaps to it aren't walkways. */
+  reach?: boolean
   hint?: string
 }
 
@@ -77,7 +79,7 @@ export const CATALOG: CatalogEntry[] = [
   },
   { id: 'armchair', name: 'Armchair', category: 'Living', layer: 'floor', size: { w: 0.82, d: 0.82, h: 0.8 }, fabric: 'olive', finish: 'oak' },
   {
-    id: 'coffee-table', name: 'Coffee table', category: 'Living', layer: 'floor', size: { w: 1.2, d: 0.6, h: 0.4 }, finish: 'oak',
+    id: 'coffee-table', name: 'Coffee table', category: 'Living', layer: 'floor', size: { w: 1.2, d: 0.6, h: 0.4 }, finish: 'oak', reach: true,
     variants: [{ label: '1.0 m', w: 1.0, d: 0.55, h: 0.4 }, { label: '1.2 m', w: 1.2, d: 0.6, h: 0.4 }, { label: 'Round 0.9 m', w: 0.9, d: 0.9, h: 0.38 }],
     options: [{ key: 'shape', label: 'Shape', choices: [['rect', 'Rectangle'], ['round', 'Round']], default: 'rect' }],
   },

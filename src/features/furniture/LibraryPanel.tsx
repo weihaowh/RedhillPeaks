@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { Bath, BedDouble, BookOpen, CookingPot, Flower2, Hammer, Plus, Search, Sofa, Sparkles, UtensilsCrossed, WashingMachine } from 'lucide-react'
 import type { FloorPlan } from '../../types/plan'
 import { useAppStore } from '../../store/useAppStore'
-import { useDesignStore } from '../../store/useDesignStore'
 import { planBounds } from '../../lib/planMath'
 import { redhillPeaks } from '../../data/redhillPeaks'
-import { starterLayout } from '../../data/starterLayout'
 import { CATALOG, CATEGORIES, type Category } from './catalog'
 import { addItem } from './itemActions'
 import { FURNITURE_MIME, sceneBridge, viewCentre } from '../scene/sceneBridge'
@@ -26,7 +24,6 @@ const mm = (m: number) => Math.round(m * 1000)
 
 export function LibraryPanel({ plan }: { plan: FloorPlan }) {
   const [query, setQuery] = useState('')
-  const itemCount = useDesignStore((s) => s.design.items.length)
   const q = query.trim().toLowerCase()
   const matches = CATALOG.filter((e) => !q || e.name.toLowerCase().includes(q) || e.category.toLowerCase().includes(q))
 
@@ -38,19 +35,14 @@ export function LibraryPanel({ plan }: { plan: FloorPlan }) {
     addItem(type, x, y)
   }
 
-  const furnish = () => {
-    useDesignStore.getState().edit((d) => ({ ...d, items: starterLayout() }))
-    useAppStore.getState().resetView()
-  }
-
   return (
     <div className="space-y-4">
       {plan.id === redhillPeaks.id && (
-        <button type="button" onClick={furnish} className="flex w-full items-start gap-3 rounded-xl bg-accent/10 p-3 text-left ring-1 ring-accent/30 transition hover:bg-accent/15">
+        <button type="button" onClick={() => useAppStore.getState().setLeftTab('layouts')} className="flex w-full items-start gap-3 rounded-xl bg-accent/10 p-3 text-left ring-1 ring-accent/30 transition hover:bg-accent/15">
           <Sparkles size={18} className="mt-0.5 shrink-0 text-accent" />
           <span>
-            <span className="block text-sm font-semibold">{itemCount ? 'Replace with starter layout' : 'Furnish with a starter layout'}</span>
-            <span className="block text-xs leading-relaxed text-muted">A designer layout for every room, checked against doors and walkways. Rearrange it freely; Ctrl+Z undoes.</span>
+            <span className="block text-sm font-semibold">Layout ideas</span>
+            <span className="block text-xs leading-relaxed text-muted">Furnish the whole flat for your household, or try different arrangements room by room.</span>
           </span>
         </button>
       )}

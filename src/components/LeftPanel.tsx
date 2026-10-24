@@ -1,4 +1,4 @@
-import { Bookmark, Info, Layers, PanelLeftClose, PanelLeftOpen, Sofa, Zap } from 'lucide-react'
+import { Bookmark, Info, Layers, LayoutTemplate, PanelLeftClose, PanelLeftOpen, Sofa, Zap } from 'lucide-react'
 import clsx from 'clsx'
 import type { FloorPlan, RoomKind } from '../types/plan'
 import { useAppStore, type LeftTab } from '../store/useAppStore'
@@ -6,6 +6,7 @@ import { polygonArea } from '../lib/planMath'
 import { LibraryPanel } from '../features/furniture/LibraryPanel'
 import { PresetsPanel } from '../features/presets/PresetsPanel'
 import { ElectricalPanel } from '../features/electrical/ElectricalPanel'
+import { LayoutsPanel } from '../features/layouts/LayoutsPanel'
 
 export const KIND_COLOR: Record<RoomKind, string> = {
   living: '#d9a066',
@@ -20,6 +21,7 @@ export const KIND_COLOR: Record<RoomKind, string> = {
 const TABS: { id: LeftTab; label: string; icon: typeof Layers }[] = [
   { id: 'rooms', label: 'Rooms', icon: Layers },
   { id: 'library', label: 'Library', icon: Sofa },
+  { id: 'layouts', label: 'Layouts', icon: LayoutTemplate },
   { id: 'presets', label: 'Presets', icon: Bookmark },
   { id: 'electrical', label: 'Electrical', icon: Zap },
 ]
@@ -49,7 +51,7 @@ export function LeftPanel({ plan }: { plan: FloorPlan }) {
     >
       <div className="flex items-center gap-1 border-b border-line/80 p-2">
         {TABS.map(({ id, label, icon: Icon }) => (
-          // Four tabs don't fit with labels, so only the active one shows its name.
+          // The tabs don't fit with labels, so only the active one shows its name.
           <button key={id} type="button" title={label} onClick={() => setTab(id)} className={clsx('chip justify-center', tab === id ? 'chip-on flex-1' : 'px-2')}>
             <Icon size={14} /> {tab === id && label}
           </button>
@@ -62,6 +64,7 @@ export function LeftPanel({ plan }: { plan: FloorPlan }) {
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {tab === 'rooms' && <RoomsTab plan={plan} />}
         {tab === 'library' && <LibraryPanel plan={plan} />}
+        {tab === 'layouts' && <LayoutsPanel plan={plan} />}
         {tab === 'presets' && <PresetsPanel plan={plan} />}
         {tab === 'electrical' && <ElectricalPanel plan={plan} />}
       </div>

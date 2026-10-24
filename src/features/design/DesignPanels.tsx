@@ -10,14 +10,16 @@ import { FLOOR_FINISHES, finishById, floorSpecFor, type FloorFinish } from '../s
 import { FEATURE_FINISHES, PAINT_PALETTES, featureById } from '../scene/wallFinishes'
 import { kelvinToColor } from '../scene/Ceilings'
 import { StylePicker } from './StylePicker'
+import { RoomLayouts, roomLayoutZones } from '../layouts/LayoutsPanel'
 
-type Tab = 'floor' | 'walls' | 'ceiling'
+type Tab = 'layout' | 'floor' | 'walls' | 'ceiling'
 
 const edit = (fn: (d: Design) => Design) => useDesignStore.getState().edit(fn)
 
 export function RoomDesign({ room, plan }: { room: Room; plan: FloorPlan }) {
   const [tab, setTab] = useState<Tab>('floor')
   const tabs: [Tab, string][] = room.kind === 'ledge' ? [['walls', 'Walls']] : [['floor', 'Floor'], ['walls', 'Walls'], ['ceiling', 'Ceiling']]
+  if (roomLayoutZones(plan, room.id).length) tabs.push(['layout', 'Layout'])
   const active = tabs.some(([t]) => t === tab) ? tab : tabs[0][0]
 
   return (
@@ -32,6 +34,7 @@ export function RoomDesign({ room, plan }: { room: Room; plan: FloorPlan }) {
       {active === 'floor' && <FloorTab room={room} plan={plan} />}
       {active === 'walls' && <WallsTab room={room} plan={plan} />}
       {active === 'ceiling' && <CeilingTab room={room} />}
+      {active === 'layout' && <RoomLayouts plan={plan} roomId={room.id} />}
       {room.kind !== 'ledge' && room.kind !== 'shelter' && <StylePicker roomId={room.id} compact />}
     </section>
   )
