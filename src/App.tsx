@@ -4,6 +4,7 @@ import { duplicateItem, removeItem, rotateItem } from './features/furniture/item
 import { usePresetStore } from './store/usePresetStore'
 import { usePresetUi } from './features/presets/presetUi'
 import { SavePresetDialog } from './features/presets/SavePresetDialog'
+import { ReportView } from './features/report/ReportView'
 import { usePlanStore } from './store/usePlanStore'
 import { useAppStore } from './store/useAppStore'
 import { TopBar } from './components/TopBar'
@@ -31,6 +32,11 @@ export default function App() {
     usePresetStore.getState().load()
     // Ctrl+S saves a preset from anywhere instead of the browser's "save page".
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && useAppStore.getState().report) {
+        e.stopImmediatePropagation()
+        useAppStore.getState().openReport(null)
+        return
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
         usePresetUi.getState().openSave()
@@ -92,6 +98,7 @@ export default function App() {
       <RightPanel plan={plan} />
       <ViewControls />
       <SavePresetDialog />
+      <ReportView plan={plan} />
       {compare && (
         <Suspense fallback={null}>
           <CompareView sides={compare} onClose={closeCompare} />

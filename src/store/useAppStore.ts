@@ -9,6 +9,7 @@ export type LeftTab = 'rooms' | 'library' | 'presets'
 export type WallMode = 'full' | 'cutaway'
 export type Quality = 'draft' | 'high' | 'ultra'
 export type LightsMode = 'auto' | 'on' | 'off'
+export type ReportTab = 'budget' | 'list' | 'hdb' | 'boards'
 
 interface AppState {
   mode: ViewMode
@@ -37,6 +38,10 @@ interface AppState {
   lights: LightsMode
   /** Walkthrough: a plan point to walk to (set by clicking the floor). */
   walkTarget: { point: [number, number]; nonce: number } | null
+  /** Renovation budget in SGD. */
+  budget: number
+  /** Open tab of the project report overlay, if showing. */
+  report: ReportTab | null
 
   setMode: (mode: ViewMode) => void
   toggleTheme: () => void
@@ -59,6 +64,8 @@ interface AppState {
   setSun: (patch: Partial<SunSettings>) => void
   setLights: (mode: LightsMode) => void
   walkTo: (point: [number, number]) => void
+  setBudget: (sgd: number) => void
+  openReport: (tab: ReportTab | null) => void
 }
 
 const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
@@ -89,6 +96,8 @@ export const useAppStore = create<AppState>()(
       sun: { hour: 15, date: 'today', north: 0 },
       lights: 'auto',
       walkTarget: null,
+      budget: 60000,
+      report: null,
 
       setMode: (mode) => set({ mode, featurePick: null }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
@@ -109,6 +118,8 @@ export const useAppStore = create<AppState>()(
       setUnderlayOpacity: (underlayOpacity) => set({ underlayOpacity }),
       setSun: (patch) => set((s) => ({ sun: { ...s.sun, ...patch } })),
       setLights: (lights) => set({ lights }),
+      setBudget: (budget) => set({ budget }),
+      openReport: (report) => set({ report }),
       walkTo: (point) => set((s) => ({ walkTarget: { point, nonce: (s.walkTarget?.nonce ?? 0) + 1 } })),
       resetView: () => set((s) => ({ selectedRoomId: null, selectedWallId: null, selectedOpening: null, selectedItemId: null, viewResetNonce: s.viewResetNonce + 1 })),
     }),
@@ -122,6 +133,7 @@ export const useAppStore = create<AppState>()(
         underlayOpacity: s.underlayOpacity,
         sun: s.sun,
         lights: s.lights,
+        budget: s.budget,
       }),
     },
   ),

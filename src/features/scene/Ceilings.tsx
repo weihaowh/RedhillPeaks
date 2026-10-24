@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import type { FloorPlan, Vec2 } from '../../types/plan'
+import type { FloorPlan, Room, Vec2, Wall } from '../../types/plan'
 import type { CeilingSpec } from '../../types/design'
 import { closestOnSegment, pointInPolygon } from '../../lib/planMath'
 import { paintMaterial } from './wallFinishes'
@@ -31,6 +31,34 @@ function stripMaterial(kelvin: number) {
   return m
 }
 
+/**
+ * Room edges that run along a wall, which is where L-box and cove bands go (not open sides
+ * such as the kitchen beam). Shared with the cost estimate so both use the same run length.
+ */
+export function bandEdges(plan: FloorPlan, room: Room) {
+  const pts = room.polygon
+  const edges: { a: Vec2; b: Vec2; len: number; mid: Vec2; wall: Wall }[] = []
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]
+    const b = pts[(i + 1) % pts.length]
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+    if (len < 0.3) continue
+    const mid: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+    const wall = plan.walls.find((w) => {
+      if (closestOnSegment(mid, w.start, w.end).dist > 0.03) return false
+      const wx = w.end[0] - w.start[0]
+      const wy = w.end[1] - w.start[1]
+      return Math.abs(wx * (b[1] - a[1]) - wy * (b[0] - a[0])) / (Math.hypot(wx, wy) * len) < 0.05
+    })
+    if (!wall || (wall.openings ?? []).some((o) => o.kind === 'opening')) continue
+    edges.push({ a, b, len, mid, wall })
+  }
+  return edges
+}
+
+/** Total band length round a room (m). */
+export const bandRun = (plan: FloorPlan, room: Room) => bandEdges(plan, room).reduce((sum, e) => sum + e.len, 0)
+
 interface Band {
   position: [number, number, number]
   rotation: number
@@ -53,20 +81,7 @@ export function Ceilings({ plan, ceilings, height }: { plan: FloorPlan; ceilings
           const dims = cove ? COVE : LBOX
           const bands: Band[] = []
           const pts = room.polygon
-          for (let i = 0; i < pts.length; i++) {
-            const a = pts[i]
-            const b = pts[(i + 1) % pts.length]
-            const len = Math.hypot(b[0] - a[0], b[1] - a[1])
-            if (len < 0.3) continue
-            const mid: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-            // Only edges that run along a wall get a band (not open sides like the kitchen beam).
-            const wall = plan.walls.find((w) => {
-              if (closestOnSegment(mid, w.start, w.end).dist > 0.03) return false
-              const wx = w.end[0] - w.start[0]
-              const wy = w.end[1] - w.start[1]
-              return Math.abs(wx * (b[1] - a[1]) - wy * (b[0] - a[0])) / (Math.hypot(wx, wy) * len) < 0.05
-            })
-            if (!wall || (wall.openings ?? []).some((o) => o.kind === 'opening')) continue
+          for (const { a, b, len, mid, wall } of bandEdges(plan, room)) {
             let n: Vec2 = [-(b[1] - a[1]) / len, (b[0] - a[0]) / len]
             if (!pointInPolygon([mid[0] + n[0] * 0.3, mid[1] + n[1] * 0.3], pts)) n = [-n[0], -n[1]]
             const inset = wall.thickness / 2 + dims.width / 2

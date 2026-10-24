@@ -52,3 +52,26 @@ body {
     @apply pointer-events-none select-none whitespace-nowrap rounded-full border border-line/80 bg-panel/90 px-2.5 py-1 text-[11px] font-medium text-ink shadow-float backdrop-blur;
   }
 }
+
+/* Printing the project report: show only the report, at full length. */
+@media print {
+  html,
+  body,
+  #root {
+    height: auto;
+    overflow: visible;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    overflow: visible;
+  }
+}

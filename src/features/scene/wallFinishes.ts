@@ -11,6 +11,7 @@ export const PAINT_PALETTES: { name: string; colors: { label: string; hex: strin
     colors: [
       { label: 'Cloud White', hex: '#f4f1ea' },
       { label: 'Chalk', hex: '#efece6' },
+      { label: 'Rice Paper', hex: '#efe9df' },
       { label: 'Warm Linen', hex: '#ece3d3' },
       { label: 'Greige', hex: '#d6cfc4' },
       { label: 'Mushroom', hex: '#bfb4a6' },
@@ -23,6 +24,7 @@ export const PAINT_PALETTES: { name: string; colors: { label: string; hex: strin
       { label: 'Clay', hex: '#dcbba3' },
       { label: 'Terracotta', hex: '#c98e6f' },
       { label: 'Sand', hex: '#e2d2b6' },
+      { label: 'Limewash Sand', hex: '#d9cbb8' },
       { label: 'Olive', hex: '#a9a487' },
       { label: 'Sage', hex: '#bcc5b0' },
       { label: 'Eucalyptus', hex: '#8fa394' },

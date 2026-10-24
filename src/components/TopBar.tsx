@@ -4,6 +4,7 @@ import type { FloorPlan } from '../types/plan'
 import { useAppStore, type ViewMode } from '../store/useAppStore'
 import { usePresetUi } from '../features/presets/presetUi'
 import { AutosaveStatus } from '../features/presets/AutosaveStatus'
+import { BudgetPill } from '../features/report/BudgetPill'
 
 const MODES: { id: ViewMode; label: string; icon: typeof Box; disabled?: string }[] = [
   { id: 'plan', label: '2D Plan', icon: Map },
@@ -50,6 +51,7 @@ export function TopBar({ plan }: { plan: FloorPlan }) {
         <button type="button" className="icon-btn" title="Toggle light/dark" onClick={toggleTheme}>
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
+        <BudgetPill plan={plan} />
         <AutosaveStatus />
         <button
           type="button"

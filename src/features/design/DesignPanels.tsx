@@ -9,6 +9,7 @@ import { faceRoom, wallLength } from '../../lib/planMath'
 import { FLOOR_FINISHES, finishById, floorSpecFor, type FloorFinish } from '../scene/finishes'
 import { FEATURE_FINISHES, PAINT_PALETTES, featureById } from '../scene/wallFinishes'
 import { kelvinToColor } from '../scene/Ceilings'
+import { StylePicker } from './StylePicker'
 
 type Tab = 'floor' | 'walls' | 'ceiling'
 
@@ -31,6 +32,7 @@ export function RoomDesign({ room, plan }: { room: Room; plan: FloorPlan }) {
       {active === 'floor' && <FloorTab room={room} plan={plan} />}
       {active === 'walls' && <WallsTab room={room} plan={plan} />}
       {active === 'ceiling' && <CeilingTab room={room} />}
+      {room.kind !== 'ledge' && room.kind !== 'shelter' && <StylePicker roomId={room.id} compact />}
     </section>
   )
 }
@@ -255,6 +257,7 @@ export function FlatDesign() {
   const reset = useDesignStore((s) => s.reset)
   return (
     <section className="space-y-4">
+      <StylePicker />
       <div>
         <Label>Wall paint, whole flat</Label>
         <PaintPicker value={wallPaint} onChange={(hex) => edit((d) => ({ ...d, wallPaint: hex }))} />
