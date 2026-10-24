@@ -2,3 +2,6 @@ node_modules
 dist
 *.local
 .DS_Store
+
+# Original HDB floor plan: shows the unit number, keep it out of the public repo.
+Image/
