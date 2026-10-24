@@ -1,4 +1,5 @@
 import type { FurnitureItem } from '../types/design'
+import type { BuiltKind } from '../types/plan'
 
 // Indicative mid-range Singapore prices (SGD, incl. installation where it applies). They're a
 // planning guide only. Quotes vary a lot by contractor, brand and site conditions.
@@ -34,6 +35,16 @@ export const FEATURE_RATE: Record<string, number> = {
   'tile-subway': 130,
   'tile-zellige': 260,
 }
+
+/** Hacking a non-structural wall, per m² of wall, including debris disposal. */
+export const HACK_RATE = 95
+/** Making good after each hack: plastering the cut ends and patching the floor and ceiling. */
+export const HACK_MAKE_GOOD = 180
+/** New walls, per m² of wall (one side), plastered or skimmed ready for paint. */
+export const BUILD_RATE: Record<BuiltKind, number> = { drywall: 95, brick: 140, glass: 450 }
+/** A door set (leaf, frame, lockset) or internal window fitted into a new wall. */
+export const NEW_DOOR = 550
+export const NEW_WINDOW = 320
 
 /** Perimeter ceiling work, per metre run. */
 export const CEILING_RATE = { lbox: 95, cove: 140 } as const

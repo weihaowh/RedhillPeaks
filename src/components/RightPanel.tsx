@@ -10,6 +10,9 @@ import { ItemInspector } from '../features/furniture/ItemInspector'
 import { FixtureInspector } from '../features/electrical/FixtureInspector'
 import { useDesignStore } from '../store/useDesignStore'
 import { KIND_COLOR } from './LeftPanel'
+import { usePlanStore } from '../store/usePlanStore'
+import { hackIdOf, isHackOpening } from '../lib/renovation'
+import { BuiltWallInspector, HackInspector } from '../features/renovation/RenovationInspectors'
 
 export function RightPanel({ plan }: { plan: FloorPlan }) {
   const mode = useAppStore((s) => s.mode)
@@ -21,11 +24,18 @@ export function RightPanel({ plan }: { plan: FloorPlan }) {
   const selectedFixtureId = useAppStore((s) => s.selectedFixtureId)
   const fixture = useDesignStore((s) => s.design.fixtures.find((f) => f.id === selectedFixtureId))
 
+  // `plan` is the renovated plan; the traced walls are edited as traced.
+  const trace = usePlanStore((s) => s.plan)
+  const hacks = useDesignStore((s) => s.design.renovation?.hacks)
   const room = plan.rooms.find((r) => r.id === selectedRoomId)
   const wall = plan.walls.find((w) => w.id === selectedWallId)
+  const traceWall = trace.walls.find((w) => w.id === selectedWallId)
+  const hackId = selectedOpening && isHackOpening(selectedOpening.openingId) ? hackIdOf(selectedOpening.openingId) : null
+  const hack = hackId ? hacks?.find((h) => h.id === hackId) : undefined
+  const hackWall = hack && trace.walls.find((w) => w.id === hack.wallId)
   const openingWall = selectedOpening ? plan.walls.find((w) => w.id === selectedOpening.wallId) : undefined
   const opening = openingWall?.openings?.find((o) => o.id === selectedOpening?.openingId)
-  const hasSelection = !!(room || wall || opening || item || fixture)
+  const hasSelection = !!(room || wall || opening || item || fixture || hack)
   // In the walkthrough the whole-flat panel would only block the view.
   if (mode === 'walk' && !hasSelection) return null
 
@@ -41,10 +51,14 @@ export function RightPanel({ plan }: { plan: FloorPlan }) {
         <FixtureInspector fixture={fixture} plan={plan} />
       ) : item ? (
         <ItemInspector item={item} plan={plan} />
+      ) : hack && hackWall ? (
+        <HackInspector hack={hack} wall={hackWall} plan={plan} />
       ) : opening && openingWall ? (
         <OpeningInspector wall={openingWall} opening={opening} />
-      ) : wall ? (
-        <WallInspector wall={wall} plan={plan} />
+      ) : wall?.built ? (
+        <BuiltWallInspector wall={wall} plan={plan} />
+      ) : wall && traceWall ? (
+        <WallInspector wall={traceWall} plan={plan} />
       ) : room ? (
         <RoomDetails room={room} plan={plan} editable={mode === 'plan'} />
       ) : (

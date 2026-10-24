@@ -20,6 +20,8 @@ import { snapPoint, type Snap } from '../../lib/snapping'
 import { KIND_COLOR } from '../../components/LeftPanel'
 import { CalibrateDialog } from './CalibrateDialog'
 import { EditorHint } from './EditorHint'
+import { builtKind, hackBlocker, hackSpan, isHackOpening, hackIdOf, renovationOf, spanExtent } from '../../lib/renovation'
+import { addBuiltWall, addHack, builtPlan, designHistoryActive, editWalls, isBuiltId, removeBuiltWall, removeHack, useRenoNotice, useRenovatedPlan } from '../renovation/renoActions'
 
 interface ViewBox {
   x: number
@@ -30,11 +32,20 @@ interface ViewBox {
 
 type Gesture =
   | { kind: 'pan'; start: DOMPoint; inverse: DOMMatrix; vb: ViewBox; moved: boolean }
-  | { kind: 'vertex'; from: Vec2; base: FloorPlan; moved: boolean }
-  | { kind: 'opening'; wallId: string; openingId: string; grab: number; base: FloorPlan; moved: boolean }
+  | { kind: 'vertex'; from: Vec2; base: FloorPlan; built: boolean; moved: boolean }
+  | { kind: 'opening'; wallId: string; openingId: string; grab: number; base: FloorPlan; built: boolean; moved: boolean }
+  | { kind: 'hack'; wall: Wall; a: number; b: number }
   | { kind: 'fixture'; id: string; moved: boolean }
   | { kind: 'item'; id: string; grab: Vec2; moved: boolean }
   | { kind: 'rotate'; id: string; moved: boolean }
+
+interface HackPreview {
+  wall: Wall
+  from: number
+  to: number
+  /** Why it can't be hacked, if it can't. */
+  blocked: string | null
+}
 
 interface OpeningPreview {
   wall: Wall
@@ -77,6 +88,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const [preview, setPreview] = useState<OpeningPreview | null>(null)
   const [calibration, setCalibration] = useState<{ a: Vec2; b: Vec2 } | null>(null)
   const [fixtureGhost, setFixtureGhost] = useState<Fixture | null>(null)
+  const [hackPreview, setHackPreview] = useState<HackPreview | null>(null)
   const gesture = useRef<Gesture | null>(null)
 
   const opacity = useAppStore((s) => s.underlayOpacity)
@@ -99,6 +111,10 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
   const selectedFixtureId = useAppStore((s) => s.selectedFixtureId)
   const selectedItemId = useAppStore((s) => s.selectedItemId)
   const fixtureType = useEditorStore((s) => s.fixtureType)
+  const buildKind = useEditorStore((s) => s.buildKind)
+  const reno = renovationOf(useDesignStore((s) => s.design))
+  // Furniture, electrical points and new doors work on the flat as renovated.
+  const effective = useRenovatedPlan(plan)
   const underlayUrl = useAssetUrl(plan.underlay?.assetId) ?? plan.underlay?.src
 
   const pxPerM = Math.min(size.w / vb.w, size.h / vb.h) || 50
@@ -147,6 +163,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     setCursor(null)
     setPreview(null)
     setFixtureGhost(null)
+    setHackPreview(null)
   }, [tool, fixtureType])
 
   const toPlan = (e: { clientX: number; clientY: number }): Vec2 => {
@@ -193,6 +210,15 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         setDraft(draft.length >= 2 && distance(p, draft[0]) < 1e-3 ? [] : [...draft, p])
         return
       }
+      case 'build': {
+        const p = snapPoint(raw, effective, tolerance, { from: last, extra: draft, disabled: e.altKey }).point
+        if (!last) return setDraft([p])
+        if (distance(p, last) < 0.01) return setDraft([])
+        const kind = builtKind(buildKind)
+        addBuiltWall({ start: last, end: p, thickness: kind.thickness, built: kind.id })
+        setDraft(draft.length >= 2 && distance(p, draft[0]) < 1e-3 ? [] : [...draft, p])
+        return
+      }
       case 'room': {
         const p = snap()
         const closes = draft.length >= 3 && (distance(p, draft[0]) < 1e-3 || distance(p, last) < 0.01)
@@ -203,15 +229,15 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       }
       case 'door':
       case 'window': {
-        const pv = previewOpening(raw, plan, tolerance, tool === 'door' ? doorWidth : windowWidth)
+        const pv = previewOpening(raw, effective, tolerance, tool === 'door' ? doorWidth : windowWidth)
         if (!pv?.valid) return
         const opening: Opening = { id: newId(tool), kind: tool, offset: pv.offset, width: pv.width, ...(tool === 'door' ? DOOR : WINDOW) }
-        edit((pl) => addOpening(pl, pv.wall.id, opening))
+        editWalls(!!pv.wall.built, (pl) => addOpening(pl, pv.wall.id, opening))
         app.selectOpening({ wallId: pv.wall.id, openingId: opening.id })
         return
       }
       case 'electrical': {
-        const fx = placeFixtureAt(fixtureType, raw, plan, tolerance * 1.5)
+        const fx = placeFixtureAt(fixtureType, raw, effective, tolerance * 1.5)
         if (!fx) return
         useDesignStore.getState().edit((d) => ({ ...d, fixtures: [...d.fixtures, fx] }))
         app.selectFixture(fx.id)
@@ -256,17 +282,40 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       svg.setPointerCapture(e.pointerId)
       return
     }
+    // Hack tool: press on a wall, then release (whole wall) or drag along it (part of it).
+    if (tool === 'hack' && e.button === 0) {
+      const hit = wallUnder(toPlan(e))
+      if (hit) {
+        if (hit.wall.built) {
+          removeBuiltWall(hit.wall.id)
+          useRenoNotice.getState().show('New wall removed.')
+          return
+        }
+        const blocked = hackBlocker(plan, hit.wall)
+        if (blocked) {
+          useRenoNotice.getState().show(blocked)
+          return
+        }
+        gesture.current = { kind: 'hack', wall: hit.wall, a: hit.t, b: hit.t }
+        svg.setPointerCapture(e.pointerId)
+        return
+      }
+    }
     const handle = (e.target as Element).closest('[data-handle]')
     if (handle && e.button === 0) {
-      const base = usePlanStore.getState().plan
-      usePlanStore.getState().checkpoint()
+      const opening = handle.getAttribute('data-opening')
+      const built = handle.getAttribute('data-handle') === 'vertex' ? isBuiltId(effective, selectedWallId) : isBuiltId(effective, opening?.split('|')[0])
+      // New walls live in the design; traced walls in the plan.
+      const base = built ? builtPlan() : usePlanStore.getState().plan
+      if (built) useDesignStore.getState().checkpoint()
+      else usePlanStore.getState().checkpoint()
       if (handle.getAttribute('data-handle') === 'vertex') {
-        gesture.current = { kind: 'vertex', from: [Number(handle.getAttribute('data-x')), Number(handle.getAttribute('data-y'))], base, moved: false }
+        gesture.current = { kind: 'vertex', from: [Number(handle.getAttribute('data-x')), Number(handle.getAttribute('data-y'))], base, built, moved: false }
       } else {
-        const [wallId, openingId] = handle.getAttribute('data-opening')!.split('|')
+        const [wallId, openingId] = opening!.split('|')
         const wall = base.walls.find((w) => w.id === wallId)!
         const o = wall.openings!.find((op) => op.id === openingId)!
-        gesture.current = { kind: 'opening', wallId, openingId, grab: closestOnSegment(toPlan(e), wall.start, wall.end).t - o.offset, base, moved: false }
+        gesture.current = { kind: 'opening', wallId, openingId, grab: closestOnSegment(toPlan(e), wall.start, wall.end).t - o.offset, base, built, moved: false }
       }
     } else {
       const ctm = svg.getScreenCTM()
@@ -291,17 +340,24 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       return
     }
     if (g?.kind === 'vertex') {
-      const snap = snapPoint(raw, g.base, tolerance, { exclude: g.from, disabled: e.altKey })
+      // New walls snap to the traced walls too; traced walls only to each other.
+      const snap = snapPoint(raw, g.built ? { ...effective, walls: [...plan.walls, ...g.base.walls] } : g.base, tolerance, { exclude: g.from, disabled: e.altKey })
       g.moved = true
       setCursor(snap)
-      edit(() => movePoint(g.base, g.from, snap.point), { history: false })
+      editWalls(g.built, () => movePoint(g.base, g.from, snap.point), { history: false })
       return
     }
     if (g?.kind === 'opening') {
       const wall = g.base.walls.find((w) => w.id === g.wallId)!
       const t = closestOnSegment(raw, wall.start, wall.end).t
       g.moved = true
-      edit(() => updateOpening(g.base, g.wallId, g.openingId, { offset: Math.round((t - g.grab) * 100) / 100 }), { history: false })
+      editWalls(g.built, () => updateOpening(g.base, g.wallId, g.openingId, { offset: Math.round((t - g.grab) * 100) / 100 }), { history: false })
+      return
+    }
+    if (g?.kind === 'hack') {
+      g.b = closestOnSegment(raw, g.wall.start, g.wall.end).t
+      const [from, to] = hackSpan(g.wall, g.a, g.b)
+      setHackPreview({ wall: g.wall, from, to, blocked: null })
       return
     }
 
@@ -313,7 +369,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         const next = { ...item, x: raw[0] + g.grab[0], y: raw[1] + g.grab[1] }
         // Hold Alt to place freely; otherwise pieces tuck flush against nearby walls.
         const free = e.altKey || catalogEntry(item.type)?.layer === 'rug'
-        const [x, y] = free ? [next.x, next.y] : snapToWalls(next, plan)
+        const [x, y] = free ? [next.x, next.y] : snapToWalls(next, effective)
         updateItem(item.id, { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 }, false)
       } else {
         // Face the cursor: front (-sin θ, cos θ) points from the centre to the pointer.
@@ -326,7 +382,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     if (g?.kind === 'fixture') {
       const f = useDesignStore.getState().design.fixtures.find((x) => x.id === g.id)
       if (!f) return
-      const moved = placeFixtureAt(f.type, raw, plan, tolerance * 2)
+      const moved = placeFixtureAt(f.type, raw, effective, tolerance * 2)
       if (!moved) return
       g.moved = true
       const patch = { x: moved.x, y: moved.y, rotation: moved.rotation, wallId: moved.wallId, side: moved.side }
@@ -335,11 +391,16 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     }
 
     if (tool === 'electrical') {
-      setFixtureGhost(placeFixtureAt(fixtureType, raw, plan, tolerance * 1.5))
+      setFixtureGhost(placeFixtureAt(fixtureType, raw, effective, tolerance * 1.5))
     } else if (tool === 'wall' || tool === 'room' || tool === 'calibrate') {
       setCursor(snapPoint(raw, plan, tolerance, { from: draft[draft.length - 1], extra: draft, disabled: e.altKey }))
+    } else if (tool === 'build') {
+      setCursor(snapPoint(raw, effective, tolerance, { from: draft[draft.length - 1], extra: draft, disabled: e.altKey }))
     } else if (tool === 'door' || tool === 'window') {
-      setPreview(previewOpening(raw, plan, tolerance, tool === 'door' ? doorWidth : windowWidth))
+      setPreview(previewOpening(raw, effective, tolerance, tool === 'door' ? doorWidth : windowWidth))
+    } else if (tool === 'hack') {
+      const hit = wallUnder(raw)
+      setHackPreview(hit ? { wall: hit.wall, from: 0, to: wallLength(hit.wall), blocked: hit.wall.built ? null : hackBlocker(plan, hit.wall) } : null)
     }
   }
 
@@ -351,13 +412,23 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       if (!g.moved) handleClick(toPlan(e), e)
       return
     }
+    if (g.kind === 'hack') {
+      const [from, to] = hackSpan(g.wall, g.a, g.b)
+      const hack = addHack(g.wall.id, from, to)
+      useAppStore.getState().selectOpening({ wallId: g.wall.id, openingId: `hack:${hack.id}` })
+      setHackPreview(null)
+      return
+    }
     if (g.kind === 'fixture' || g.kind === 'item' || g.kind === 'rotate') {
       if (!g.moved) useDesignStore.getState().dropCheckpoint()
       return
     }
     setCursor(null)
     // A click on a handle without dragging shouldn't leave an empty undo step.
-    if (!g.moved) usePlanStore.setState((s) => ({ past: s.past.slice(0, -1) }))
+    if (!g.moved) {
+      if (g.built) useDesignStore.getState().dropCheckpoint()
+      else usePlanStore.setState((s) => ({ past: s.past.slice(0, -1) }))
+    }
   }
 
   // Keyboard shortcuts while the plan editor is open.
@@ -370,9 +441,8 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
       const planStore = usePlanStore.getState()
       const mod = e.ctrlKey || e.metaKey
 
-      // Electrical points live in the design, so undo follows the design while working on them.
-      // Furniture and electrical points live in the design; walls and rooms in the plan.
-      const history = editor.tool === 'electrical' || app.selectedFixtureId || app.selectedItemId ? useDesignStore.getState() : planStore
+      // Furniture, electrical points and renovation live in the design; the trace in the plan.
+      const history = designHistoryActive() ? useDesignStore.getState() : planStore
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault()
         if (e.shiftKey) history.redo()
@@ -415,10 +485,12 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
           }))
         } else if (app.selectedOpening) {
           const { wallId, openingId } = app.selectedOpening
-          planStore.edit((p) => deleteOpening(p, wallId, openingId))
+          if (isHackOpening(openingId)) removeHack(hackIdOf(openingId))
+          else editWalls(isBuiltId(builtPlan(), wallId), (p) => deleteOpening(p, wallId, openingId))
         } else if (app.selectedWallId) {
           const id = app.selectedWallId
-          planStore.edit((p) => deleteWall(p, id))
+          if (isBuiltId(builtPlan(), id)) removeBuiltWall(id)
+          else planStore.edit((p) => deleteWall(p, id))
         } else if (app.selectedRoomId) {
           const id = app.selectedRoomId
           planStore.edit((p) => deleteRoom(p, id))
@@ -436,7 +508,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
           return
         }
       }
-      const tools: Record<string, typeof editor.tool> = { v: 'select', w: 'wall', d: 'door', n: 'window', r: 'room', c: 'calibrate', e: 'electrical' }
+      const tools: Record<string, typeof editor.tool> = { v: 'select', w: 'wall', d: 'door', n: 'window', r: 'room', c: 'calibrate', e: 'electrical', b: 'build', h: 'hack' }
       const next = tools[e.key.toLowerCase()]
       if (next) editor.setTool(next)
     }
@@ -444,19 +516,29 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [finishRoom])
 
+  /** The wall under a plan point (traced or new), with the distance along it. */
+  const wallUnder = (p: Vec2) => {
+    let best: { wall: Wall; t: number; dist: number } | null = null
+    for (const wall of [...plan.walls, ...reno.walls]) {
+      const hit = closestOnSegment(p, wall.start, wall.end)
+      if (hit.dist <= wall.thickness / 2 + tolerance && (!best || hit.dist < best.dist)) best = { wall, t: hit.t, dist: hit.dist }
+    }
+    return best
+  }
+
   const walls = useMemo(
     () =>
-      plan.walls
+      [...plan.walls, ...reno.walls]
         .filter((w) => wallLength(w) > 0.005)
         .map((w) => ({
           wall: w,
           outline: wallOutline(w),
           gaps: (w.openings ?? []).map((o) => ({ opening: o, outline: wallOutline({ ...w, thickness: w.thickness + 0.02 }, o.offset, o.offset + o.width) })),
         })),
-    [plan],
+    [plan, reno.walls],
   )
 
-  const selectedWall = plan.walls.find((w) => w.id === selectedWallId)
+  const selectedWall = plan.walls.find((w) => w.id === selectedWallId) ?? reno.walls.find((w) => w.id === selectedWallId)
   const selectedRoom = plan.rooms.find((r) => r.id === selectedRoomId)
   const last = draft[draft.length - 1]
   const drawing = tool !== 'select'
@@ -494,6 +576,15 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         <defs>
           <pattern id="grid" width={0.5} height={0.5} patternUnits="userSpaceOnUse">
             <path d="M 0.5 0 L 0 0 0 0.5" fill="none" className="stroke-ink/[0.06]" strokeWidth={0.01} />
+          </pattern>
+          {/* Hatching for renovation: red for walls to hack, accent for new walls. */}
+          <pattern id="hatch-hack" width={0.08} height={0.08} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width={0.08} height={0.08} fill="#e5484d" fillOpacity={0.18} />
+            <line x1={0} y1={0} x2={0} y2={0.08} stroke="#e5484d" strokeWidth={0.025} />
+          </pattern>
+          <pattern id="hatch-new" width={0.06} height={0.06} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <rect width={0.06} height={0.06} fill="rgb(var(--accent))" fillOpacity={0.35} />
+            <line x1={0} y1={0} x2={0} y2={0.06} stroke="rgb(var(--accent))" strokeWidth={0.02} />
           </pattern>
         </defs>
         <rect x={-100} y={-100} width={250} height={250} fill="url(#grid)" />
@@ -535,12 +626,13 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
             key={wall.id}
             data-wall={wall.id}
             points={points(outline)}
+            fill={wall.id === selectedWallId ? undefined : wall.built === 'glass' ? 'rgb(56 189 248 / 0.35)' : wall.built ? 'url(#hatch-new)' : undefined}
             className={clsx(
-              wall.structural ? 'fill-ink/85' : 'fill-ink/40',
+              wall.built ? (wall.built === 'glass' ? 'stroke-sky-500' : 'stroke-accent') : wall.structural ? 'fill-ink/85' : 'fill-ink/40',
               wall.id === selectedWallId && 'fill-accent stroke-accent',
               !drawing && 'cursor-pointer hover:fill-accent/70',
             )}
-            strokeWidth={wall.id === selectedWallId ? px(1.5) : 0}
+            strokeWidth={wall.id === selectedWallId ? px(1.5) : wall.built ? px(1) : 0}
           />
         ))}
 
@@ -566,7 +658,28 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
           }),
         )}
 
-        <FurniturePlanLayer plan={plan} items={items} selectedId={selectedItemId} interactive={tool === 'select'} px={px} />
+        {/* Stretches of wall to be hacked. */}
+        {reno.hacks.map((h) => {
+          const wall = plan.walls.find((w) => w.id === h.wallId)
+          if (!wall) return null
+          const key = `${wall.id}|hack:${h.id}`
+          const active = selectedOpening?.wallId === wall.id && selectedOpening.openingId === `hack:${h.id}`
+          const [a, b] = spanExtent(wall, h.from, h.to)
+          return (
+            <polygon
+              key={key}
+              data-opening={key}
+              points={points(wallOutline({ ...wall, thickness: wall.thickness + px(4) }, a, b))}
+              fill="url(#hatch-hack)"
+              stroke="#e5484d"
+              strokeWidth={px(active ? 2 : 1)}
+              strokeDasharray={active ? undefined : `${px(5)} ${px(3)}`}
+              className={clsx(!drawing && 'cursor-pointer')}
+            />
+          )
+        })}
+
+        <FurniturePlanLayer plan={effective} items={items} selectedId={selectedItemId} interactive={tool === 'select'} px={px} />
 
         {plan.rooms.map((room) => {
           const [x, y] = roomAnchor(room)
@@ -607,6 +720,27 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
             <DimensionLabel a={last} b={cursor.point} px={px} />
           </>
         )}
+        {tool === 'build' && last && cursor && distance(last, cursor.point) > 0.005 && (
+          <>
+            <polygon
+              points={points(wallOutline({ id: 'preview', start: last, end: cursor.point, thickness: builtKind(buildKind).thickness }))}
+              className={buildKind === 'glass' ? 'fill-sky-400/40 stroke-sky-500' : 'fill-accent/50 stroke-accent'}
+              strokeWidth={px(1)}
+              pointerEvents="none"
+            />
+            <DimensionLabel a={last} b={cursor.point} px={px} />
+          </>
+        )}
+        {tool === 'hack' && hackPreview && (
+          <polygon
+            points={points(wallOutline({ ...hackPreview.wall, thickness: hackPreview.wall.thickness + px(6) }, ...spanExtent(hackPreview.wall, hackPreview.from, hackPreview.to)))}
+            fill={hackPreview.blocked ? 'rgb(var(--ink))' : 'url(#hatch-hack)'}
+            fillOpacity={hackPreview.blocked ? 0.25 : 1}
+            stroke={hackPreview.blocked ? 'rgb(var(--ink))' : '#e5484d'}
+            strokeWidth={px(1.5)}
+            pointerEvents="none"
+          />
+        )}
         {tool === 'room' && draft.length > 0 && (
           <polygon
             points={points(cursor ? [...draft, cursor.point] : draft)}
@@ -619,7 +753,7 @@ export function PlanView({ plan }: { plan: FloorPlan }) {
         {tool === 'calibrate' && (last || calibration) && (
           <CalibrationLine a={calibration?.a ?? last!} b={calibration?.b ?? cursor?.point ?? last!} px={px} />
         )}
-        {(tool === 'wall' || tool === 'room' || tool === 'calibrate') &&
+        {(tool === 'wall' || tool === 'build' || tool === 'room' || tool === 'calibrate') &&
           draft.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r={px(3.5)} className="fill-accent" pointerEvents="none" />)}
         {(tool === 'door' || tool === 'window') && preview && (
           <polygon

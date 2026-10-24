@@ -33,7 +33,13 @@ export interface Wall {
   structural?: boolean
   exterior?: boolean
   openings?: Opening[]
+  /** A new wall added in the renovation (kept in the design, not the trace), and what it's made of. */
+  built?: BuiltKind
+  /** Set by applyRenovation on hacked walls: the openings as traced, before hacks swallowed any. */
+  tracedOpenings?: Opening[]
 }
+
+export type BuiltKind = 'drywall' | 'brick' | 'glass'
 
 export type RoomKind = 'living' | 'bedroom' | 'kitchen' | 'bath' | 'service' | 'shelter' | 'ledge'
 

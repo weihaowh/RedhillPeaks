@@ -16,6 +16,8 @@ import { Ceilings } from './Ceilings'
 import { CeilingSlabs } from './Interior'
 import { useDaylight } from './daylight'
 import { sceneBridge } from './sceneBridge'
+import { hackBlocker } from '../../lib/renovation'
+import { BuildTool3D, GlassWall, HACK_BLOCKED, HACK_OK, HackGhosts, hackHandlers, renoTool3d, useHackHover, useRenoTool3d } from '../renovation/Renovation3D'
 
 export const CUTAWAY_HEIGHT = 1.1
 const SLAB_DEPTH = 0.2
@@ -37,6 +39,12 @@ export function FlatModel({ plan }: { plan: FloorPlan }) {
   const { lightsOn } = useDaylight()
   // Walls are always full height when you're inside the flat.
   const cut = wallMode === 'cutaway' && !walking ? CUTAWAY_HEIGHT : undefined
+  const tool = useRenoTool3d()
+  const renoTool = readOnly ? null : tool
+  const hoverId = useHackHover((s) => s.wallId)
+  useEffect(() => {
+    if (renoTool !== 'hack') useHackHover.getState().set(null)
+  }, [renoTool])
 
   // Which room each wall face looks into only changes with the plan.
   const faceRooms = useMemo(() => {
@@ -67,11 +75,17 @@ export function FlatModel({ plan }: { plan: FloorPlan }) {
       {plan.walls
         .filter((wall) => wallLength(wall) > 0.005)
         .map((wall) => {
+          const hack = renoTool === 'hack' ? hackHandlers(plan, wall) : undefined
+          if (wall.built === 'glass') return <GlassWall key={wall.id} wall={wall} ceiling={plan.ceilingHeight} cut={cut} onClick={hack?.onClick} />
           const base = showStructural && wall.structural ? STRUCTURAL : paintMaterial(design.wallPaint)
           // BoxGeometry face order: +x, -x, +y, -y, +z (side 1), -z (side -1).
-          const materials = [base, base, base, base, faceMaterial(wall, 1, design), faceMaterial(wall, -1, design)]
-          return <WallMesh key={wall.id} wall={wall} ceiling={plan.ceilingHeight} cut={cut} materials={materials} />
+          let materials = [base, base, base, base, faceMaterial(wall, 1, design), faceMaterial(wall, -1, design)]
+          // Hack tool: red where it can be hacked, dark grey where it can't.
+          if (hack && hoverId === wall.id) materials = Array(6).fill(hackBlocker(plan, wall) ? HACK_BLOCKED : HACK_OK)
+          return <WallMesh key={wall.id} wall={wall} ceiling={plan.ceilingHeight} cut={cut} materials={materials} hack={hack} />
         })}
+      {renoTool === 'hack' && <HackGhosts plan={plan} />}
+      {renoTool === 'build' && <BuildTool3D plan={plan} />}
       <Skirting plan={plan} />
       {cut === undefined && <Ceilings plan={plan} ceilings={design.ceilings} height={plan.ceilingHeight} />}
       {walking && <CeilingSlabs plan={plan} height={plan.ceilingHeight} lightsOn={lightsOn} />}
@@ -102,7 +116,7 @@ function RoomFloor({ room }: { room: Room }) {
     if (readOnly || e.delta > 4) return // ignore the end of an orbit drag
     e.stopPropagation()
     const app = useAppStore.getState()
-    if (app.featurePick) return // picking a wall, not a room
+    if (app.featurePick || renoTool3d()) return // picking a wall or building, not selecting a room
     // In the walkthrough, clicking the floor walks you there.
     if (app.mode === 'walk') return app.walkTo([e.point.x + sceneBridge.offset[0], e.point.z + sceneBridge.offset[1]])
     select(selected ? null : room.id)
@@ -156,7 +170,7 @@ function wallPieceGeometry(piece: WallPiece, thickness: number) {
   return geo
 }
 
-function WallMesh({ wall, ceiling, cut, materials }: { wall: Wall; ceiling: number; cut?: number; materials: THREE.Material[] }) {
+function WallMesh({ wall, ceiling, cut, materials, hack }: { wall: Wall; ceiling: number; cut?: number; materials: THREE.Material[]; hack?: ReturnType<typeof hackHandlers> }) {
   const pieces = useMemo(() => wallPieces(wall, ceiling, cut), [wall, ceiling, cut])
   const geometries = useMemo(() => pieces.map((p) => wallPieceGeometry(p, wall.thickness)), [pieces, wall.thickness])
   useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries])
@@ -164,6 +178,7 @@ function WallMesh({ wall, ceiling, cut, materials }: { wall: Wall; ceiling: numb
   const visibleTop = Math.min(wall.height ?? ceiling, cut ?? Infinity)
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
+    if (hack?.onClick(e)) return
     const pick = useAppStore.getState().featurePick
     if (!pick || e.delta > 4) return
     const side = e.face?.materialIndex === 4 ? 1 : e.face?.materialIndex === 5 ? -1 : null
@@ -181,7 +196,16 @@ function WallMesh({ wall, ceiling, cut, materials }: { wall: Wall; ceiling: numb
         const [x, z] = alongWall(wall, (p.from + p.to) / 2)
         return (
           <group key={i} position={[x, 0, z]} rotation-y={rotation}>
-            <mesh geometry={geometries[i]} position-y={p.bottom + h / 2} material={materials} castShadow receiveShadow onClick={onClick} />
+            <mesh
+              geometry={geometries[i]}
+              position-y={p.bottom + h / 2}
+              material={materials}
+              castShadow
+              receiveShadow
+              onClick={onClick}
+              onPointerOver={hack?.onPointerOver}
+              onPointerOut={hack?.onPointerOut}
+            />
             {p.top >= visibleTop - 1e-6 && (
               <mesh position-y={p.top + 0.002} material={CAP}>
                 <boxGeometry args={[len, 0.004, wall.thickness]} />

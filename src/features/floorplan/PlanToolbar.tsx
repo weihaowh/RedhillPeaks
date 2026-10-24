@@ -1,10 +1,11 @@
-import { AppWindow, DoorOpen, Maximize2, MousePointer2, PenLine, Pentagon, Redo2, Ruler, Undo2, Zap } from 'lucide-react'
+import { AppWindow, Axe, DoorOpen, Hammer, Maximize2, MousePointer2, PenLine, Pentagon, Redo2, Ruler, Undo2, Zap } from 'lucide-react'
 import clsx from 'clsx'
 import { useEditorStore, type Tool } from '../../store/useEditorStore'
 import { usePlanStore } from '../../store/usePlanStore'
 import { useAppStore } from '../../store/useAppStore'
 import { useDesignStore } from '../../store/useDesignStore'
 import { UploadPlanButton } from './UploadPlan'
+import { BUILT_KINDS, renovationOf } from '../../lib/renovation'
 
 const TOOLS: { id: Tool; label: string; key: string; icon: typeof PenLine }[] = [
   { id: 'select', label: 'Select', key: 'V', icon: MousePointer2 },
@@ -12,8 +13,14 @@ const TOOLS: { id: Tool; label: string; key: string; icon: typeof PenLine }[] = 
   { id: 'door', label: 'Door', key: 'D', icon: DoorOpen },
   { id: 'window', label: 'Window', key: 'N', icon: AppWindow },
   { id: 'room', label: 'Room', key: 'R', icon: Pentagon },
-  { id: 'electrical', label: 'Electrical', key: 'E', icon: Zap },
   { id: 'calibrate', label: 'Calibrate', key: 'C', icon: Ruler },
+]
+
+// Renovation tools work on top of the trace: they're kept in the design, costed and HDB-checked.
+const RENO_TOOLS: typeof TOOLS = [
+  { id: 'build', label: 'Build', key: 'B', icon: Hammer },
+  { id: 'hack', label: 'Hack', key: 'H', icon: Axe },
+  { id: 'electrical', label: 'Electrical', key: 'E', icon: Zap },
 ]
 
 const THICKNESSES = [0.1, 0.15, 0.2, 0.3]
@@ -38,10 +45,15 @@ export function PlanToolbar() {
   const undo = () => (electrical ? useDesignStore : usePlanStore).getState().undo()
   const redo = () => (electrical ? useDesignStore : usePlanStore).getState().redo()
   const resetView = useAppStore((s) => s.resetView)
+  const buildKind = useEditorStore((s) => s.buildKind)
+  const setBuildKind = useEditorStore((s) => s.setBuildKind)
 
   return (
     <>
-      {TOOLS.map(({ id, label, key, icon: Icon }) => (
+      {[...TOOLS, null, ...RENO_TOOLS].map((t) => {
+        if (!t) return <Divider key="reno" />
+        const { id, label, key, icon: Icon } = t
+        return (
         <button
           key={id}
           type="button"
@@ -54,7 +66,8 @@ export function PlanToolbar() {
         >
           <Icon size={14} /> <span className="hidden xl:inline">{label}</span>
         </button>
-      ))}
+        )
+      })}
       <Divider />
       <button type="button" className="chip" title="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
         <Undo2 size={14} />
@@ -70,6 +83,16 @@ export function PlanToolbar() {
           {THICKNESSES.map((t) => (
             <button key={t} type="button" onClick={() => setWallThickness(t)} className={clsx('chip tabular-nums', wallThickness === t && 'chip-on')}>
               {t * 1000}
+            </button>
+          ))}
+        </>
+      )}
+      {tool === 'build' && (
+        <>
+          <Divider />
+          {BUILT_KINDS.map((k) => (
+            <button key={k.id} type="button" title={k.hint} onClick={() => setBuildKind(k.id)} className={clsx('chip whitespace-nowrap', buildKind === k.id && 'chip-on')}>
+              {k.label.split(' ')[0]}
             </button>
           ))}
         </>
@@ -115,9 +138,11 @@ function Divider() {
   return <span className="mx-0.5 h-5 w-px shrink-0 bg-line" />
 }
 
-/** True while working on furniture or electrical points, when 2D undo/redo act on the design. */
+/** True while working on furniture, electrical points or renovation, when 2D undo/redo act on the design. */
 export function useElectricalUndo() {
   const tool = useEditorStore((s) => s.tool)
-  const designSelected = useAppStore((s) => !!s.selectedFixtureId || !!s.selectedItemId)
-  return tool === 'electrical' || designSelected
+  const designSelected = useAppStore((s) => !!s.selectedFixtureId || !!s.selectedItemId || !!s.selectedOpening?.openingId.startsWith('hack:'))
+  const wallId = useAppStore((s) => s.selectedWallId ?? s.selectedOpening?.wallId)
+  const builtSelected = useDesignStore((s) => renovationOf(s.design).walls.some((w) => w.id === wallId))
+  return tool === 'electrical' || tool === 'build' || tool === 'hack' || designSelected || builtSelected
 }

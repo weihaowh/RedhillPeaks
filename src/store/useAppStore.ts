@@ -9,6 +9,8 @@ export type LeftTab = 'rooms' | 'library' | 'layouts' | 'presets' | 'electrical'
 export type WallMode = 'full' | 'cutaway'
 export type Quality = 'draft' | 'high' | 'ultra'
 export type LightsMode = 'auto' | 'on' | 'off'
+/** 3D overview camera: orbit around the flat, or fly freely (Unreal-style, desktop). */
+export type CameraMode = 'orbit' | 'fly'
 export type ReportTab = 'budget' | 'list' | 'electrical' | 'hdb' | 'boards'
 
 interface AppState {
@@ -45,8 +47,13 @@ interface AppState {
   budget: number
   /** Open tab of the project report overlay, if showing. */
   report: ReportTab | null
+  cameraMode: CameraMode
+  /** Fly camera speed in m/s; the scroll wheel changes it while looking around. */
+  flySpeed: number
 
   setMode: (mode: ViewMode) => void
+  setCameraMode: (mode: CameraMode) => void
+  setFlySpeed: (speed: number) => void
   toggleTheme: () => void
   setLeftTab: (tab: LeftTab) => void
   setLeftOpen: (open: boolean) => void
@@ -105,8 +112,12 @@ export const useAppStore = create<AppState>()(
       walkTarget: null,
       budget: 60000,
       report: null,
+      cameraMode: 'orbit',
+      flySpeed: 3,
 
       setMode: (mode) => set({ mode, featurePick: null }),
+      setCameraMode: (cameraMode) => set({ cameraMode }),
+      setFlySpeed: (flySpeed) => set({ flySpeed: Math.min(Math.max(flySpeed, 0.25), 30) }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
       setLeftTab: (leftTab) => set({ leftTab, leftOpen: true }),
       setLeftOpen: (leftOpen) => set({ leftOpen }),
@@ -144,6 +155,8 @@ export const useAppStore = create<AppState>()(
         lights: s.lights,
         budget: s.budget,
         showElectrical: s.showElectrical,
+        cameraMode: s.cameraMode,
+        flySpeed: s.flySpeed,
       }),
     },
   ),

@@ -7,6 +7,8 @@ import { useAppStore } from '../../store/useAppStore'
 import { wallLength } from '../../lib/planMath'
 import { deleteOpening, deleteRoom, deleteWall, movePoint, updateOpening, updateRoom, updateWall } from '../../lib/planEdits'
 import { UploadPlanButton } from './UploadPlan'
+import { editWalls } from '../renovation/renoActions'
+import { WallRenovation } from '../renovation/RenovationInspectors'
 
 // Property editors for the plan editor. Every committed change goes through the undo history.
 
@@ -66,6 +68,7 @@ export function WallInspector({ wall, plan }: { wall: Wall; plan: FloorPlan }) {
         hint="Shaded black on the HDB plan. These walls must not be hacked, removed or tampered with."
       />
       <Switch checked={!!wall.exterior} onChange={(exterior) => patch({ exterior })} label="External wall" />
+      <WallRenovation wall={wall} plan={plan} />
       {!!wall.openings?.length && (
         <Field label="Openings">
           <ul className="space-y-1">
@@ -90,7 +93,8 @@ export function WallInspector({ wall, plan }: { wall: Wall; plan: FloorPlan }) {
 }
 
 export function OpeningInspector({ wall, opening }: { wall: Wall; opening: Opening }) {
-  const edit = usePlanStore((s) => s.edit)
+  // Openings in new walls are part of the renovation (design); the rest belong to the trace.
+  const edit = (fn: (p: FloorPlan) => FloorPlan) => editWalls(!!wall.built, fn)
   const selectWall = useAppStore((s) => s.selectWall)
   const clearSelection = useAppStore((s) => s.clearSelection)
   const patch = (p: Partial<Opening>) => edit((pl) => updateOpening(pl, wall.id, opening.id, p))
@@ -232,7 +236,7 @@ export function DrawingPanel() {
   )
 }
 
-function Panel({ title, subtitle, onDelete, children }: { title: string; subtitle: React.ReactNode; onDelete: () => void; children: React.ReactNode }) {
+export function Panel({ title, subtitle, onDelete, children }: { title: string; subtitle: React.ReactNode; onDelete: () => void; children: React.ReactNode }) {
   return (
     <>
       <div className="flex items-start gap-2 border-b border-line/80 p-4">
@@ -249,7 +253,7 @@ function Panel({ title, subtitle, onDelete, children }: { title: string; subtitl
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <div className="text-xs font-medium text-muted">{label}</div>
@@ -259,7 +263,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /** Number input in millimetres that commits on blur or Enter. */
-function MmInput({ value, onCommit, min = 0 }: { value: number; onCommit: (metres: number) => void; min?: number }) {
+export function MmInput({ value, onCommit, min = 0 }: { value: number; onCommit: (metres: number) => void; min?: number }) {
   const shown = String(Math.round(value * 1000))
   const [text, setText] = useState(shown)
   useEffect(() => setText(shown), [shown])

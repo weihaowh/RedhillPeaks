@@ -12,6 +12,9 @@ import { LeftPanel } from './components/LeftPanel'
 import { RightPanel } from './components/RightPanel'
 import { ViewControls } from './components/ViewControls'
 import { PlanView } from './features/floorplan/PlanView'
+import { useEditorStore } from './store/useEditorStore'
+import { sceneBridge } from './features/scene/sceneBridge'
+import { useRenovatedPlan } from './features/renovation/renoActions'
 
 const Scene3D = lazy(() => import('./features/scene/Scene3D'))
 const CompareView = lazy(() => import('./features/presets/CompareView').then((m) => ({ default: m.CompareView })))
@@ -19,7 +22,9 @@ const CompareView = lazy(() => import('./features/presets/CompareView').then((m)
 export default function App() {
   const mode = useAppStore((s) => s.mode)
   const theme = useAppStore((s) => s.theme)
-  const plan = usePlanStore((s) => s.plan)
+  const trace = usePlanStore((s) => s.plan)
+  // Everything but the plan editor sees the flat with the renovation (hacks, new walls) applied.
+  const plan = useRenovatedPlan(trace)
 
   const compare = usePresetUi((s) => s.compare)
   const closeCompare = usePresetUi((s) => s.closeCompare)
@@ -62,10 +67,23 @@ export default function App() {
         design.redo()
       } else if (e.key === 'Escape') {
         const app = useAppStore.getState()
+        const editor = useEditorStore.getState()
         if (app.featurePick) app.setFeaturePick(null)
+        else if (editor.draft.length) editor.setDraft([])
+        else if (app.mode === 'orbit' && (editor.tool === 'build' || editor.tool === 'hack')) editor.setTool('select')
         else if (app.mode === 'walk') app.setMode('orbit')
         else app.selectItem(null)
-      } else if (useAppStore.getState().mode !== 'walk') {
+      } else if (e.key === 'Enter' && useEditorStore.getState().draft.length) {
+        useEditorStore.getState().setDraft([])
+      } else if (useAppStore.getState().mode !== 'walk' && !sceneBridge.flyLooking) {
+        // B / H pick the Build and Hack tools in 3D too.
+        const k = e.key.toLowerCase()
+        if (!mod && (k === 'b' || k === 'h')) {
+          const editor = useEditorStore.getState()
+          const t = k === 'b' ? 'build' : 'hack'
+          editor.setTool(editor.tool === t ? 'select' : t)
+          return
+        }
         // Furniture shortcuts; in the walkthrough these letters steer instead.
         const id = useAppStore.getState().selectedItemId
         if (!id) return
@@ -85,7 +103,7 @@ export default function App() {
     <div className="relative h-full w-full overflow-hidden">
       <main className="absolute inset-0">
         {mode === 'plan' ? (
-          <PlanView plan={plan} />
+          <PlanView plan={trace} />
         ) : (
           <Suspense fallback={<Loading />}>
             <Scene3D plan={plan} />

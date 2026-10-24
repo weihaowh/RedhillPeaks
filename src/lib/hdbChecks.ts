@@ -5,6 +5,7 @@ import { catalogEntry } from '../features/furniture/catalog'
 import { featureById } from '../features/scene/wallFinishes'
 import { closestOnSegment, faceRoom, pointInPolygon } from './planMath'
 import { footprint, itemWarnings } from './furnitureMath'
+import { fixturesOnHacks, renovationOf } from './renovation'
 
 // Guidance checks against common HDB renovation rules. They're a planning aid, not HDB advice:
 // always confirm with HDB's renovation guidelines and a registered contractor.
@@ -24,6 +25,7 @@ export interface Check {
 const moved = (a: Wall, b: Wall) => Math.hypot(a.start[0] - b.start[0], a.start[1] - b.start[1]) > 0.05 || Math.hypot(a.end[0] - b.end[0], a.end[1] - b.end[1]) > 0.05
 const label = (type: string) => catalogEntry(type)?.name.toLowerCase() ?? type
 
+/** `plan` is the renovated plan (see applyRenovation). */
 export function runChecks(plan: FloorPlan, design: Design): Check[] {
   const checks: Check[] = []
   const traced = plan.id === redhillPeaks.id ? redhillPeaks : null
@@ -36,7 +38,7 @@ export function runChecks(plan: FloorPlan, design: Design): Check[] {
       const now = current.get(w.id)
       if (!now) problems.push('a structural wall was deleted')
       else if (moved(w, now)) problems.push('a structural wall was moved')
-      else if ((now.openings ?? []).some((o) => !(w.openings ?? []).some((orig) => orig.id === o.id))) problems.push('a new opening was cut into a structural wall')
+      else if ((now.openings ?? []).some((o) => !(w.openings ?? []).some((orig) => orig.id === o.id))) problems.push(now.openings!.some((o) => o.id.startsWith('hack:')) ? 'a structural wall is marked to be hacked' : 'a new opening was cut into a structural wall')
       else if (!now.structural) problems.push('a structural wall was unmarked')
     }
     checks.push(
@@ -45,25 +47,53 @@ export function runChecks(plan: FloorPlan, design: Design): Check[] {
         : { id: 'structural', title: 'Structural walls untouched', status: 'ok', detail: 'All walls shaded black on your HDB plan are as traced.' },
     )
 
-    // 2. Non-structural changes
-    const changed = traced.walls.filter((w) => !w.structural && (!current.has(w.id) || moved(w, current.get(w.id)!)))
-    const added = plan.walls.filter((w) => !traced.walls.some((t) => t.id === w.id))
-    if (changed.length || added.length) {
-      checks.push({
-        id: 'partitions',
-        title: 'Partition walls changed',
-        status: 'warn',
-        detail: `${changed.length ? `${changed.length} existing non-structural wall${changed.length > 1 ? 's' : ''} removed or moved. ` : ''}${added.length ? `${added.length} new wall${added.length > 1 ? 's' : ''} added. ` : ''}Hacking non-structural walls needs a permit from HDB, and removing reinforced-concrete walls also needs a Professional Engineer's supervision. Ask your contractor to apply through HDB's renovation permit system.`,
-      })
-    } else {
-      checks.push({ id: 'partitions', title: 'No wall hacking planned', status: 'ok', detail: 'The layout matches your HDB plan, so no hacking permit is needed for walls.' })
-    }
   } else {
     checks.push({
       id: 'structural',
       title: 'Structural walls',
       status: 'info',
       detail: 'This is an uploaded plan, so changes can’t be compared with an original. Mark walls shaded black on the HDB plan as Structural while tracing; they must not be hacked.',
+    })
+  }
+
+  // 2. Hacking and new walls (the renovation layer), plus any edits to the trace itself.
+  const reno = renovationOf(design)
+  const changed = traced ? traced.walls.filter((w) => !w.structural && (!current.has(w.id) || moved(w, current.get(w.id)!))) : []
+  const added = traced ? plan.walls.filter((w) => !w.built && !traced.walls.some((t) => t.id === w.id)) : []
+  const hacked = new Set(reno.hacks.map((h) => h.wallId)).size
+  const removed = changed.length + hacked
+  const newWalls = added.length + reno.walls.length
+  if (removed || newWalls) {
+    checks.push({
+      id: 'partitions',
+      title: 'Hacking and new walls',
+      status: 'warn',
+      detail: `${removed ? `${removed} non-structural wall${removed > 1 ? 's' : ''} to hack or move. ` : ''}${newWalls ? `${newWalls} new wall${newWalls > 1 ? 's' : ''} to build. ` : ''}Hacking non-structural walls and building new ones need an HDB renovation permit, applied for by an HDB-registered contractor. Removing reinforced-concrete walls also needs a Professional Engineer's supervision.`,
+    })
+  } else {
+    checks.push({ id: 'partitions', title: 'No wall hacking planned', status: 'ok', detail: 'The layout matches your HDB plan, so no hacking permit is needed for walls.' })
+  }
+  const bathHacks = reno.hacks.filter((h) => {
+    const w = plan.walls.find((x) => x.id === h.wallId)
+    return w && ([1, -1] as const).some((s) => faceRoom(plan, w, s)?.kind === 'bath')
+  })
+  if (bathHacks.length) {
+    const wall = plan.walls.find((x) => x.id === bathHacks[0].wallId)
+    checks.push({
+      id: 'bath-walls',
+      title: 'Bathroom walls hacked',
+      status: 'warn',
+      detail: `${bathHacks.length} hack${bathHacks.length > 1 ? 's' : ''} on a bathroom wall. In a new flat, HDB doesn't allow hacking or relocating bathroom walls within 3 years of key collection, since it breaks the waterproofing. After that it needs a permit and new waterproofing.`,
+      roomId: wall ? ([1, -1] as const).map((s) => faceRoom(plan, wall, s)).find((r) => r?.kind === 'bath')?.id : undefined,
+    })
+  }
+  const stranded = fixturesOnHacks(plan, design).length
+  if (stranded) {
+    checks.push({
+      id: 'hacked-points',
+      title: 'Electrical points on hacked walls',
+      status: 'warn',
+      detail: `${stranded} electrical point${stranded > 1 ? 's are' : ' is'} on a stretch of wall being hacked. Relocate ${stranded > 1 ? 'them' : 'it'} and have the wiring rerouted by a licensed electrician.`,
     })
   }
 

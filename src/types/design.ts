@@ -1,3 +1,5 @@
+import type { Wall } from './plan'
+
 // The look of the flat, kept separate from its geometry (FloorPlan) so a design can be
 // saved, swapped or reset without touching the trace.
 
@@ -34,6 +36,23 @@ export interface Design {
   items: FurnitureItem[]
   /** Electrical points, lights, aircon and data points. */
   fixtures: Fixture[]
+  /** Walls to hack and walls to build. Missing in designs saved before renovation existed. */
+  renovation?: Renovation
+}
+
+/** Wall changes, kept on top of the traced plan so the original flat is never lost. */
+export interface Renovation {
+  /** New walls (each has `built` set). */
+  walls: Wall[]
+  hacks: Hack[]
+}
+
+/** A stretch of an existing wall to demolish, in metres along the wall from its start. */
+export interface Hack {
+  id: string
+  wallId: string
+  from: number
+  to: number
 }
 
 export const faceKey = (wallId: string, side: 1 | -1) => `${wallId}|${side}`

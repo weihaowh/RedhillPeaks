@@ -11,10 +11,12 @@ import { Effects, FOV, Stage, VIEW_DIR } from './SceneStage'
 import { Minimap, cameraPose } from './Minimap'
 import { Walkthrough } from './Walkthrough'
 import { WalkOverlay } from './WalkOverlay'
+import { FlyCamera, finePointer } from './FlyCamera'
+import { SceneHint } from './SceneHint'
 import { FurnitureLayer } from '../furniture/FurnitureLayer'
 import { FixtureLayer3D } from '../electrical/FixtureLayer3D'
 import { addItem } from '../furniture/itemActions'
-import { FURNITURE_MIME, floorPointAt, sceneBridge } from './sceneBridge'
+import { FURNITURE_MIME, floorPointAt, lookTarget, sceneBridge } from './sceneBridge'
 
 export default function Scene3D({ plan }: { plan: FloorPlan }) {
   const quality = useAppStore((s) => s.quality)
@@ -25,6 +27,7 @@ export default function Scene3D({ plan }: { plan: FloorPlan }) {
   const baseDpr = quality === 'draft' ? 1 : quality === 'high' ? 1.5 : 2
   const dpr = Math.max(0.6, Math.min(window.devicePixelRatio || 1, baseDpr) * dprFactor)
   const picking = useAppStore((s) => !!s.featurePick)
+  const flying = useAppStore((s) => s.cameraMode === 'fly') && finePointer
   const b = planBounds(plan)
   const offset = useMemo<[number, number]>(() => [b.cx, b.cy], [b.cx, b.cy])
 
@@ -64,13 +67,14 @@ export default function Scene3D({ plan }: { plan: FloorPlan }) {
           onDecline={() => setDprFactor((f) => Math.max(0.5, f - 0.25))}
           onIncline={() => setDprFactor((f) => Math.min(1, f + 0.25))}
         />
-        {mode === 'walk' ? <Walkthrough plan={plan} /> : <CameraRig plan={plan} />}
+        {mode === 'walk' ? <Walkthrough plan={plan} /> : flying ? <FlyCamera plan={plan} /> : <CameraRig plan={plan} />}
         <PoseTracker offset={offset} />
         <SceneBridge offset={offset} />
 
         <Effects />
       </Canvas>
       <Minimap plan={plan} />
+      {mode === 'orbit' && <SceneHint flying={flying} />}
       {mode === 'walk' && <WalkOverlay />}
     </div>
   )
@@ -96,7 +100,18 @@ function CameraRig({ plan }: { plan: FloorPlan }) {
   }
 
   // Re-frame the whole flat on reset only, not on every resize.
+  const mounted = useRef(false)
   useEffect(() => {
+    // Coming back from the fly camera: orbit around what it was looking at, from where it was.
+    if (!mounted.current && sceneBridge.flyHandoff) {
+      const cam = sceneBridge.flyHandoff
+      sceneBridge.flyHandoff = undefined
+      mounted.current = true
+      const t = lookTarget(cam)
+      ref.current?.setLookAt(cam.position.x, cam.position.y, cam.position.z, t.x, t.y, t.z, false)
+      return
+    }
+    mounted.current = true
     // Extra margin so the floating panels don't cover the edges of the flat.
     frame(b.minX, b.minY, b.maxX, b.maxY, resetNonce > 0, 1.25)
   }, [resetNonce])

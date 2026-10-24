@@ -12,6 +12,7 @@ import { catalogEntry, footprintOf } from './catalog'
 import { ItemModel } from './models'
 import { updateItem } from './itemActions'
 import { floorPointAt, setCameraEnabled } from '../scene/sceneBridge'
+import { renoTool3d } from '../renovation/Renovation3D'
 
 const ACCENT = '#d08850'
 const PROBLEM = '#e5484d'
@@ -95,7 +96,8 @@ const PlacedItem = memo(function PlacedItem({ item, plan, selected, problem, rea
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     // In the walkthrough, dragging looks around instead of moving furniture.
-    if (readOnly || e.button !== 0 || useAppStore.getState().featurePick || useAppStore.getState().mode === 'walk') return
+    // While building or hacking walls, clicks go through to the walls and floor instead.
+    if (readOnly || e.button !== 0 || useAppStore.getState().featurePick || useAppStore.getState().mode === 'walk' || renoTool3d()) return
     e.stopPropagation()
     useAppStore.getState().selectItem(item.id)
     if (item.locked) return
@@ -116,7 +118,7 @@ const PlacedItem = memo(function PlacedItem({ item, plan, selected, problem, rea
       <group
         position-y={elevation}
         onPointerDown={onPointerDown}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => !renoTool3d() && e.stopPropagation()}
         onPointerOver={(e) => {
           if (readOnly) return
           e.stopPropagation()

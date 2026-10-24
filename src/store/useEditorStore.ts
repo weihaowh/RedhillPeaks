@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import type { Vec2 } from '../types/plan'
+import type { BuiltKind, Vec2 } from '../types/plan'
 
-export type Tool = 'select' | 'wall' | 'door' | 'window' | 'room' | 'calibrate' | 'electrical'
+export type Tool = 'select' | 'wall' | 'door' | 'window' | 'room' | 'calibrate' | 'electrical' | 'build' | 'hack'
 
 interface EditorState {
   tool: Tool
@@ -12,6 +12,9 @@ interface EditorState {
   windowWidth: number
   /** Fixture placed by the electrical tool. */
   fixtureType: string
+  /** What the Build tool makes new walls from. */
+  buildKind: BuiltKind
+  setBuildKind: (kind: BuiltKind) => void
   setTool: (tool: Tool) => void
   setDraft: (draft: Vec2[]) => void
   setWallThickness: (v: number) => void
@@ -28,6 +31,8 @@ export const useEditorStore = create<EditorState>()((set) => ({
   doorWidth: 0.9,
   windowWidth: 1.2,
   fixtureType: 'socket-twin',
+  buildKind: 'drywall',
+  setBuildKind: (buildKind) => set({ buildKind }),
   setTool: (tool) => set({ tool, draft: [] }),
   setDraft: (draft) => set({ draft }),
   setWallThickness: (wallThickness) => set({ wallThickness }),

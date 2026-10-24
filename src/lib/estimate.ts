@@ -1,6 +1,6 @@
 import type { FloorPlan } from '../types/plan'
 import { faceKey, type Design } from '../types/design'
-import { APPLIANCES, CEILING_RATE, CONTINGENCY, FEATURE_RATE, FITTINGS, FLOOR_RATE, PAINT_RATE, itemPrice } from '../data/pricing'
+import { APPLIANCES, BUILD_RATE, CEILING_RATE, HACK_MAKE_GOOD, HACK_RATE, NEW_DOOR, NEW_WINDOW, CONTINGENCY, FEATURE_RATE, FITTINGS, FLOOR_RATE, PAINT_RATE, itemPrice } from '../data/pricing'
 import { EMPTY_DESIGN } from '../store/useDesignStore'
 import { catalogEntry } from '../features/furniture/catalog'
 import { finishById } from '../features/scene/finishes'
@@ -9,11 +9,13 @@ import { bandRun } from '../features/scene/Ceilings'
 import { fixtureDef } from '../features/electrical/fixtures'
 import { fixtureRoom } from './electrical'
 import { faceRoom, pointInPolygon, polygonArea, wallLength } from './planMath'
+import { builtArea, builtKind, hackedArea, renovationOf } from './renovation'
 
-// A rough renovation budget from the current plan and design.
+// A rough renovation budget from the current plan and design. `plan` is the renovated plan
+// (new walls included); hacks are measured on the walls they cut.
 
-export type CostCategory = 'Flooring' | 'Painting & feature walls' | 'Ceilings' | 'Electrical & aircon' | 'Carpentry' | 'Furniture' | 'Appliances' | 'Bathroom fittings'
-export const CATEGORIES: CostCategory[] = ['Flooring', 'Painting & feature walls', 'Ceilings', 'Electrical & aircon', 'Carpentry', 'Furniture', 'Appliances', 'Bathroom fittings']
+export type CostCategory = 'Hacking & new walls' | 'Flooring' | 'Painting & feature walls' | 'Ceilings' | 'Electrical & aircon' | 'Carpentry' | 'Furniture' | 'Appliances' | 'Bathroom fittings'
+export const CATEGORIES: CostCategory[] = ['Hacking & new walls', 'Flooring', 'Painting & feature walls', 'Ceilings', 'Electrical & aircon', 'Carpentry', 'Furniture', 'Appliances', 'Bathroom fittings']
 
 export interface CostLine {
   category: CostCategory
@@ -40,6 +42,25 @@ export function estimate(plan: FloorPlan, design: Design): Estimate {
   const height = plan.ceilingHeight
   const indoor = plan.rooms.filter((r) => r.kind !== 'ledge')
   const roomName = (x: number, y: number) => plan.rooms.find((r) => pointInPolygon([x, y], r.polygon))?.name
+
+  // Hacking and new walls.
+  const reno = renovationOf(design)
+  for (const h of reno.hacks) {
+    const wall = plan.walls.find((w) => w.id === h.wallId)
+    if (!wall) continue
+    const area = hackedArea(plan, h)
+    const room = [faceRoom(plan, wall, 1)?.name, faceRoom(plan, wall, -1)?.name].filter(Boolean).join(' / ')
+    lines.push({ category: 'Hacking & new walls', label: 'Hack wall and make good', room, quantity: m2(area), amount: area * HACK_RATE + HACK_MAKE_GOOD })
+  }
+  for (const w of reno.walls) {
+    const area = builtArea(plan, w)
+    const room = faceRoom(plan, w, 1)?.name ?? faceRoom(plan, w, -1)?.name
+    lines.push({ category: 'Hacking & new walls', label: `New ${builtKind(w.built).label.toLowerCase()}`, room, quantity: m2(area), amount: area * BUILD_RATE[w.built ?? 'drywall'] })
+    for (const o of w.openings ?? []) {
+      if (o.kind === 'opening') continue
+      lines.push({ category: 'Hacking & new walls', label: o.kind === 'door' ? 'Door in new wall' : 'Window in new wall', room, quantity: '1', amount: o.kind === 'door' ? NEW_DOOR : NEW_WINDOW })
+    }
+  }
 
   // Flooring: only rooms given a new finish; untouched rooms keep the handed-over floor.
   for (const room of indoor) {

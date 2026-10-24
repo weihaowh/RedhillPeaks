@@ -18,6 +18,12 @@ export const sceneBridge: {
   offset: Vec2
   /** Centre of the 2D plan view, while it's showing. */
   planCentre?: () => Vec2
+  /** The fly camera is in charge (no orbit controls). */
+  flying?: boolean
+  /** Right mouse held in the fly camera: WASD/QE steer, so other shortcuts stand down. */
+  flyLooking?: boolean
+  /** Set when the fly camera hands back to orbit, so orbit starts from the same view. */
+  flyHandoff?: THREE.Camera
 } = { offset: [0, 0] }
 
 /** Drag-and-drop type for furniture coming from the library panel. */
@@ -37,12 +43,24 @@ export function floorPointAt(clientX: number, clientY: number): Vec2 | null {
   return hit ? [hit.x + offset[0], hit.z + offset[1]] : null
 }
 
-/** Plan point the camera is looking at. */
+/** Plan point the camera is looking at: the orbit target, or where the fly camera's view meets the floor. */
 export function viewCentre(): Vec2 | null {
-  const { controls, offset } = sceneBridge
-  if (!controls) return null
-  const t = controls.getTarget(new THREE.Vector3())
+  const { controls, camera, offset } = sceneBridge
+  if (controls) {
+    const t = controls.getTarget(new THREE.Vector3())
+    return [t.x + offset[0], t.z + offset[1]]
+  }
+  if (!camera) return null
+  const t = lookTarget(camera)
   return [t.x + offset[0], t.z + offset[1]]
+}
+
+/** World point the camera looks at: on the floor if that's near, else a few metres ahead. */
+export function lookTarget(camera: THREE.Camera): THREE.Vector3 {
+  const dir = camera.getWorldDirection(new THREE.Vector3())
+  const hit = new THREE.Ray(camera.position, dir).intersectPlane(FLOOR, new THREE.Vector3())
+  if (hit && hit.distanceTo(camera.position) < 25) return hit
+  return camera.position.clone().addScaledVector(dir, 4)
 }
 
 export function setCameraEnabled(enabled: boolean) {

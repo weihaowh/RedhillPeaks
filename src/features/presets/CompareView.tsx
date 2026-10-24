@@ -10,6 +10,7 @@ import { FurnitureLayer } from '../furniture/FurnitureLayer'
 import { FixtureLayer3D } from '../electrical/FixtureLayer3D'
 import { Effects, FOV, Stage, overviewEye } from '../scene/SceneStage'
 import { DesignProvider } from '../design/designContext'
+import { applyRenovation } from '../../lib/renovation'
 
 export interface CompareSide {
   name: string
@@ -23,6 +24,9 @@ export interface CompareSide {
  * Two read-only 3D views side by side. Both canvases render through one shared camera, and a
  * single set of camera controls listens on the whole area, so orbiting either side moves both.
  */
+/** Each side shows its own design's hacks and new walls. */
+const renovated = (side: CompareSide) => applyRenovation(side.plan, side.design.renovation)
+
 export function CompareView({ sides, onClose }: { sides: [CompareSide, CompareSide]; onClose: () => void }) {
   const [area, setArea] = useState<HTMLDivElement | null>(null)
   // One camera for the whole compare session, shared by both canvases.
@@ -58,9 +62,9 @@ export function CompareView({ sides, onClose }: { sides: [CompareSide, CompareSi
           <div key={i} className="relative min-h-0 bg-canvas">
             <Canvas shadows camera={camera} dpr={[1, 1.5]} gl={{ antialias: false }}>
               <DesignProvider value={{ design: side.design, readOnly: true }}>
-                <Stage plan={side.plan}>
-                  <FlatModel plan={side.plan} />
-                  <FurnitureLayer plan={side.plan} />
+                <Stage plan={renovated(side)}>
+                  <FlatModel plan={renovated(side)} />
+                  <FurnitureLayer plan={renovated(side)} />
                   <FixtureLayer3D ceiling={side.plan.ceilingHeight} />
                 </Stage>
               </DesignProvider>
