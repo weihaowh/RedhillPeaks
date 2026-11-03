@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
-import { Environment, Lightformer, SoftShadows } from '@react-three/drei'
+import { Environment, Lightformer } from '@react-three/drei'
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import type { FloorPlan } from '../../types/plan'
@@ -34,7 +34,6 @@ export function Stage({ plan, children }: { plan: FloorPlan; children: ReactNode
       <RendererSettings />
       <EnvironmentIntensity value={light.environment * indoor} />
       <color attach="background" args={[light.background]} />
-      {quality === 'ultra' && <SoftShadows size={18} samples={12} focus={0.5} />}
 
       <hemisphereLight args={['#ffffff', '#d8cfc4', light.hemisphere * indoor]} />
       <directionalLight
@@ -82,7 +81,7 @@ export function Effects({ max }: { max?: Quality }) {
   if (quality === 'high') {
     return (
       <EffectComposer multisampling={0}>
-        <N8AO aoRadius={0.6} distanceFalloff={0.8} intensity={2.2} halfRes={!walking} denoiseSamples={walking ? 12 : 8} denoiseRadius={walking ? 10 : 12} />
+        <N8AO aoRadius={walking ? 0.35 : 0.6} distanceFalloff={walking ? 1 : 0.8} intensity={walking ? 1.6 : 2.2} halfRes={!walking} denoiseSamples={walking ? 12 : 8} denoiseRadius={walking ? 10 : 12} />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
         <SMAA />
       </EffectComposer>
@@ -91,7 +90,7 @@ export function Effects({ max }: { max?: Quality }) {
   if (quality === 'ultra') {
     return (
       <EffectComposer multisampling={0}>
-        <N8AO aoRadius={0.7} distanceFalloff={0.8} intensity={2.4} quality="high" denoiseSamples={walking ? 16 : 8} />
+        <N8AO aoRadius={walking ? 0.4 : 0.7} distanceFalloff={walking ? 1 : 0.8} intensity={walking ? 1.8 : 2.4} quality="high" denoiseSamples={walking ? 16 : 8} />
         <Bloom mipmapBlur intensity={0.3} luminanceThreshold={0.9} luminanceSmoothing={0.2} />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
         <SMAA />

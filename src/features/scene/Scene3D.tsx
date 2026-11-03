@@ -22,10 +22,15 @@ export default function Scene3D({ plan }: { plan: FloorPlan }) {
   const quality = useAppStore((s) => s.quality)
   const mode = useAppStore((s) => s.mode)
   const selectRoom = useAppStore((s) => s.selectRoom)
-  // Lowered when the frame rate struggles, raised again when it recovers.
+  // Lowered when the frame rate struggles, raised again when it recovers. High and Ultra never
+  // drop below the screen's own resolution: an upscaled image looks smeared, which defeats the
+  // point of those settings (Draft is the setting for slow devices).
   const [dprFactor, setDprFactor] = useState(1)
+  useEffect(() => setDprFactor(1), [quality])
   const baseDpr = quality === 'draft' ? 1 : quality === 'high' ? 1.5 : 2
-  const dpr = Math.max(0.6, Math.min(window.devicePixelRatio || 1, baseDpr) * dprFactor)
+  const screen = window.devicePixelRatio || 1
+  const minDpr = quality === 'draft' ? 0.6 : Math.min(1, screen)
+  const dpr = Math.max(minDpr, Math.min(screen, baseDpr) * dprFactor)
   const picking = useAppStore((s) => !!s.featurePick)
   const flying = useAppStore((s) => s.cameraMode === 'fly') && finePointer
   const b = planBounds(plan)
