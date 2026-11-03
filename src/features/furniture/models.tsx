@@ -5,6 +5,8 @@ import type { FurnitureItem } from '../../types/design'
 import { seeded } from '../scene/finishes'
 import { featureMaterial } from '../scene/wallFinishes'
 import { FABRICS, FURNITURE_FINISHES, option } from './catalog'
+import { ItemAsset, WithFallback, assetFor } from './assets'
+import { useAppStore } from '../../store/useAppStore'
 
 // Procedural furniture. Each model is drawn in the item's local frame: origin at the centre of
 // its footprint on the floor, width along x, depth along z with the front facing +z.
@@ -735,8 +737,19 @@ const MODELS: Record<string, (p: ModelProps) => ReactNode> = {
   'kitchen-run': KitchenRun,
 }
 
-/** Renders an item's model; memoised so dragging one piece doesn't rebuild the others. */
+/**
+ * Renders an item's model; memoised so dragging one piece doesn't rebuild the others. Above Draft
+ * quality, pieces with a high-fidelity model use it, with the procedural one shown while it loads.
+ */
 export const ItemModel = memo(function ItemModel({ item }: ModelProps) {
   const Model = MODELS[item.type] ?? Generic
-  return <Model item={item} />
+  const detailed = useAppStore((s) => s.quality !== 'draft')
+  const def = detailed ? assetFor(item) : null
+  const procedural = <Model item={item} />
+  if (!def) return procedural
+  return (
+    <WithFallback fallback={procedural}>
+      <ItemAsset item={item} def={def} />
+    </WithFallback>
+  )
 })

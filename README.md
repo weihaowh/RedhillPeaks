@@ -348,7 +348,36 @@ Open **Library** in the left panel. Search ("sofa", "bed", "wardrobe"…) or bro
 - **Drag** a piece onto the 2D plan or the 3D view to drop it exactly there.
 - Or click **+** to add it in the middle of the current view.
 
-Every piece is at real-world size, shown as width × depth × height in mm. "Made to measure" pieces (wardrobes, kitchen cabinets, shoe cabinets, TV feature walls, platform beds, kitchen islands, floating shelves) can be any size within sensible limits.
+Every piece is at real-world size, shown as width × depth × height in mm.
+
+**Detailed models (wabi-sabi set).** At **High** and **Ultra** quality, almost every piece is shown as a detailed model. The set was made for this app in Blender, in one wabi-sabi look:
+
+- **Woods:** white oak.
+- **Fabrics:** washed linen, bouclé, and paper-cord / jute weaves.
+- **Other materials:** limewash plaster, ceramic and washi paper.
+
+Every size option has its own model, so nothing is stretched. Examples:
+
+- **Beds:** Single, Super single, Queen and King.
+- **Sofas:** 2-, 3- and 4-seater.
+- **L-shaped sofas:** 2.4, 2.7 and 3.0 m, with the chaise on the left or right.
+- **Dining:** 1.4, 1.6 and 1.8 m tables plus a round table, with 4 or 6 chairs.
+- **TVs:** 55", 65" and 75".
+- **Other sizes:** rugs, desks, vanities, shower screens, wall art and TV consoles each come in their catalogue sizes.
+
+Colour options still work:
+
+- **Fabric and Finish** recolour the linen, bouclé, weaves and oak while keeping the real texture.
+- **Appliances** follow their White / Stainless / Black option.
+
+How they load:
+
+- A model loads the first time the piece appears; the simple model shows until it's ready.
+- The bookshelf and plants use Poly Haven scans (CC0), whose materials are fixed.
+- Built-in carpentry (wardrobe, kitchen cabinets, shoe cabinet, TV feature wall, island, platform bed) stays as simple models, because those are made to measure.
+- **Draft** quality shows every piece as a simple model.
+
+Credits are in `public/models/CREDITS.md`. The Blender build pipeline is in `tools/blender/` (see its README).
 
 ### Moving and rotating
 
@@ -775,6 +804,9 @@ All 3D models and textures are procedural (generated in code), so there are no 3
 | `src/features/presets/` | Presets panel, save dialog, compare view, autosave indicator |
 | `src/features/report/` | Project report: budget, shopping list, electrical plan, HDB checks, room boards |
 | `public/plans/` | Floor plan image used as the underlay |
+| `public/models/` | Detailed furniture models: the wabi-sabi set in `wabi/` (glTF, Draco, shared textures), Poly Haven scans (`.glb`), and `CREDITS.md` |
+| `public/draco/` | Draco mesh decoder, hosted locally |
+| `tools/blender/` | Blender pipeline that builds, previews and exports the wabi-sabi models (see its README) |
 | `Image/` | Source HDB floor plan PDF (git-ignored) |
 
 ### Changing things
@@ -782,7 +814,8 @@ All 3D models and textures are procedural (generated in code), so there are no 3
 | To change | Edit |
 | --- | --- |
 | Prices | `src/data/pricing.ts` (flooring, paint, feature walls, ceilings, hacking/new walls, furniture and carpentry) |
-| The furniture catalogue | `src/features/furniture/catalog.ts` (sizes, variants, options, designer tips) and `models.tsx` (the 3D shapes) |
+| The furniture catalogue | `src/features/furniture/catalog.ts` (sizes, variants, options, designer tips) and `models.tsx` (the simple 3D shapes) |
+| Detailed models | Wabi-sabi set: edit `tools/blender/wabi/pieces.py` and re-export (see `tools/blender/README.md`). Map files to pieces and size options in `assetFor()` in `src/features/furniture/assets.tsx`. |
 | Layout ideas | `src/data/layouts.ts`. Positions are plan metres; keep each option inside its zone's region and check it has no warnings. |
 | Styles | `src/data/styles.ts` |
 | Floor and wall finishes | `src/features/scene/finishes.ts` and `wallFinishes.ts` |

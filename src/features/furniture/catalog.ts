@@ -77,7 +77,7 @@ export const CATALOG: CatalogEntry[] = [
     variants: [{ label: '2.4 m', w: 2.4, d: 1.55, h: 0.82 }, { label: '2.7 m', w: 2.7, d: 1.65, h: 0.82 }, { label: '3.0 m', w: 3.0, d: 1.7, h: 0.82 }],
     options: [{ key: 'chaise', label: 'Chaise side', choices: [['left', 'Left'], ['right', 'Right']], default: 'left' }],
   },
-  { id: 'armchair', name: 'Armchair', category: 'Living', layer: 'floor', size: { w: 0.82, d: 0.82, h: 0.8 }, fabric: 'olive', finish: 'oak' },
+  { id: 'armchair', name: 'Armchair', category: 'Living', layer: 'floor', size: { w: 0.82, d: 0.82, h: 0.8 }, fabric: 'cream', finish: 'oak' },
   {
     id: 'coffee-table', name: 'Coffee table', category: 'Living', layer: 'floor', size: { w: 1.2, d: 0.6, h: 0.4 }, finish: 'oak', reach: true,
     variants: [{ label: '1.0 m', w: 1.0, d: 0.55, h: 0.4 }, { label: '1.2 m', w: 1.2, d: 0.6, h: 0.4 }, { label: 'Round 0.9 m', w: 0.9, d: 0.9, h: 0.38 }],
@@ -111,7 +111,7 @@ export const CATALOG: CatalogEntry[] = [
     ],
     hint: 'Allow about 900 mm behind each chair so people can pull out and sit down comfortably.',
   },
-  { id: 'bar-stool', name: 'Bar stool', category: 'Dining', layer: 'floor', size: { w: 0.4, d: 0.4, h: 0.75 }, finish: 'black', fabric: 'terracotta' },
+  { id: 'bar-stool', name: 'Bar stool', category: 'Dining', layer: 'floor', size: { w: 0.4, d: 0.4, h: 0.75 }, finish: 'oak', fabric: 'oat' },
 
   // Bedroom
   {
@@ -125,7 +125,7 @@ export const CATALOG: CatalogEntry[] = [
     hint: 'Keep at least 600 mm on each side you get in from, and about 900 mm at the foot if a wardrobe opens there.',
   },
   { id: 'bedside', name: 'Bedside table', category: 'Bedroom', layer: 'floor', size: { w: 0.45, d: 0.4, h: 0.5 }, finish: 'oak' },
-  { id: 'dresser', name: 'Dresser', category: 'Bedroom', layer: 'floor', size: { w: 1.2, d: 0.45, h: 0.8 }, finish: 'white' },
+  { id: 'dresser', name: 'Dresser', category: 'Bedroom', layer: 'floor', size: { w: 1.2, d: 0.45, h: 0.8 }, finish: 'oak' },
 
   // Study
   {

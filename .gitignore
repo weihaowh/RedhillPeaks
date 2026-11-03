@@ -5,3 +5,6 @@ dist
 
 # Original HDB floor plan: shows the unit number, keep it out of the public repo.
 Image/
+
+# Blender build cache (downloaded textures, renders)
+tools/blender/cache/

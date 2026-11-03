@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Copy, Lightbulb, Lock, LockOpen, RotateCcw, RotateCw, Trash2, TriangleAlert, X } from 'lucide-react'
+import { Copy, Lightbulb, Sparkles, Lock, LockOpen, RotateCcw, RotateCw, Trash2, TriangleAlert, X } from 'lucide-react'
 import clsx from 'clsx'
 import type { FloorPlan } from '../../types/plan'
 import type { FurnitureItem } from '../../types/design'
@@ -8,11 +8,14 @@ import { useDesignStore } from '../../store/useDesignStore'
 import { itemWarnings } from '../../lib/furnitureMath'
 import { FABRICS, FURNITURE_FINISHES, catalogEntry, option } from './catalog'
 import { duplicateItem, removeItem, rotateItem, updateItem } from './itemActions'
+import { assetFor } from './assets'
 
 export function ItemInspector({ item, plan }: { item: FurnitureItem; plan: FloorPlan }) {
   const entry = catalogEntry(item.type)
   const items = useDesignStore((s) => s.design.items)
   const warnings = useMemo(() => itemWarnings(item, items, plan), [item, items, plan])
+  // Scanned models keep their own materials; the Blender-made set takes any finish or fabric.
+  const detailed = useAppStore((s) => s.quality !== 'draft') && assetFor(item)?.recolor === false
   if (!entry) return null
   const set = (patch: Partial<FurnitureItem>) => updateItem(item.id, patch)
 
@@ -94,7 +97,16 @@ export function ItemInspector({ item, plan }: { item: FurnitureItem; plan: Floor
           </Section>
         )}
 
-        {entry.finish && (
+        {detailed && (
+          <p className="flex gap-2 rounded-xl bg-ink/5 p-3 text-xs leading-relaxed text-muted">
+            <Sparkles size={14} className="mt-px shrink-0 text-accent" />
+            <span>
+              Shown as a detailed model with real materials. Its finish and fabric can’t be changed; switch quality to Draft for the simple version in any colour.
+            </span>
+          </p>
+        )}
+
+        {entry.finish && !detailed && (
           <Section label="Finish">
             <div className="flex flex-wrap gap-1.5">
               {FURNITURE_FINISHES.map((f) => (
@@ -104,7 +116,7 @@ export function ItemInspector({ item, plan }: { item: FurnitureItem; plan: Floor
           </Section>
         )}
 
-        {entry.fabric && (
+        {entry.fabric && !detailed && (
           <Section label="Fabric">
             <div className="flex flex-wrap gap-1.5">
               {FABRICS.map((f) => (
