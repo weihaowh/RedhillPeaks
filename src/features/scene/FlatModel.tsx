@@ -98,7 +98,10 @@ function RoomFloor({ room }: { room: Room }) {
   const stored = useDesign((d) => d.floors[room.id])
   const readOnly = useReadOnly()
   const selected = useAppStore((s) => s.selectedRoomId === room.id) && !readOnly
-  const hovered = useAppStore((s) => s.hoveredRoomId === room.id) && !readOnly
+  const walking = useAppStore((s) => s.mode === 'walk')
+  // In the walkthrough, dragging to look sweeps the cursor across floors, so hover highlights
+  // would flash on and off; they're only shown in the overview.
+  const hovered = useAppStore((s) => s.hoveredRoomId === room.id) && !readOnly && !walking
   const select = useAppStore((s) => s.selectRoom)
   const setHovered = useAppStore((s) => s.setHoveredRoom)
   const level = room.floorLevel ?? 0
@@ -132,7 +135,7 @@ function RoomFloor({ room }: { room: Room }) {
         receiveShadow
         onClick={onClick}
         onPointerOver={(e) => {
-          if (readOnly) return
+          if (readOnly || useAppStore.getState().mode === 'walk') return
           e.stopPropagation()
           setHovered(room.id)
         }}

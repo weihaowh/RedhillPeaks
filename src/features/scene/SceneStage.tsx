@@ -76,10 +76,13 @@ export function Effects({ max }: { max?: Quality }) {
   const setting = useAppStore((s) => s.quality)
   const order: Quality[] = ['draft', 'high', 'ultra']
   const quality = max && order.indexOf(setting) > order.indexOf(max) ? max : setting
+  // Half-resolution AO is fine from above, but at eye level its upscaling shimmers along thin
+  // edges as you move, so the walkthrough renders it at full resolution.
+  const walking = useAppStore((s) => s.mode === 'walk')
   if (quality === 'high') {
     return (
       <EffectComposer multisampling={0}>
-        <N8AO aoRadius={0.6} distanceFalloff={0.8} intensity={2.2} halfRes />
+        <N8AO aoRadius={0.6} distanceFalloff={0.8} intensity={2.2} halfRes={!walking} denoiseSamples={walking ? 12 : 8} denoiseRadius={walking ? 10 : 12} />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
         <SMAA />
       </EffectComposer>
@@ -88,7 +91,7 @@ export function Effects({ max }: { max?: Quality }) {
   if (quality === 'ultra') {
     return (
       <EffectComposer multisampling={0}>
-        <N8AO aoRadius={0.7} distanceFalloff={0.8} intensity={2.4} quality="high" />
+        <N8AO aoRadius={0.7} distanceFalloff={0.8} intensity={2.4} quality="high" denoiseSamples={walking ? 16 : 8} />
         <Bloom mipmapBlur intensity={0.3} luminanceThreshold={0.9} luminanceSmoothing={0.2} />
         <ToneMapping mode={ToneMappingMode.NEUTRAL} />
         <SMAA />

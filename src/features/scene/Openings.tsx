@@ -7,6 +7,11 @@ import { MATERIALS } from './sceneMaterials'
 const DOOR_OPEN_ANGLE = (72 * Math.PI) / 180
 const FRAME = 0.04
 const LEAF = 0.04
+/**
+ * Frames stand this far proud of the wall's reveal faces. Flush faces lie in the same plane and
+ * z-fight (shimmer) as the camera moves, especially in the walkthrough.
+ */
+const PROUD = 0.006
 
 interface OpeningProps {
   wall: Wall
@@ -36,12 +41,12 @@ export function Door({ wall, opening, cut }: OpeningProps) {
     <group>
       {/* Jambs and head */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (w / 2 + FRAME / 2), h / 2, 0]} material={MATERIALS.frame}>
+        <mesh key={s} position={[s * (w / 2 + FRAME / 2 - PROUD), h / 2, 0]} material={MATERIALS.frame}>
           <boxGeometry args={[FRAME, h, frameDepth]} />
         </mesh>
       ))}
       {h >= opening.height && (
-        <mesh position={[0, h + FRAME / 2, 0]} material={MATERIALS.frame}>
+        <mesh position={[0, h + FRAME / 2 - PROUD, 0]} material={MATERIALS.frame}>
           <boxGeometry args={[w + FRAME * 2, FRAME, frameDepth]} />
         </mesh>
       )}
@@ -73,17 +78,18 @@ export function WindowUnit({ opening, cut }: OpeningProps) {
 
   return (
     <group>
+      {/* The frame sits a hair inside the opening so its faces never coincide with the reveals. */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (w / 2 - bar / 2), midY, 0]} material={MATERIALS.aluminium}>
-          <boxGeometry args={[bar, h, depth]} />
+        <mesh key={s} position={[s * (w / 2 - bar / 2 - 0.002), midY, 0]} material={MATERIALS.aluminium}>
+          <boxGeometry args={[bar, h - 0.004, depth]} />
         </mesh>
       ))}
-      <mesh position={[0, opening.sill + bar / 2, 0]} material={MATERIALS.aluminium}>
-        <boxGeometry args={[w, bar, depth]} />
+      <mesh position={[0, opening.sill + bar / 2 + 0.002, 0]} material={MATERIALS.aluminium}>
+        <boxGeometry args={[w - 0.004, bar, depth]} />
       </mesh>
       {top >= opening.sill + opening.height - 1e-6 && (
-        <mesh position={[0, top - bar / 2, 0]} material={MATERIALS.aluminium}>
-          <boxGeometry args={[w, bar, depth]} />
+        <mesh position={[0, top - bar / 2 - 0.002, 0]} material={MATERIALS.aluminium}>
+          <boxGeometry args={[w - 0.004, bar, depth]} />
         </mesh>
       )}
       {Array.from({ length: panels - 1 }, (_, i) => (

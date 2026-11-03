@@ -63,9 +63,13 @@ export default function Scene3D({ plan }: { plan: FloorPlan }) {
           <FixtureLayer3D ceiling={plan.ceilingHeight} />
         </Stage>
 
+        {/* Steps the pixel ratio down when frames drop. After a couple of up/down swings it settles
+            on the lower value rather than oscillating, since every change blinks the frame. */}
         <PerformanceMonitor
+          flipflops={2}
           onDecline={() => setDprFactor((f) => Math.max(0.5, f - 0.25))}
           onIncline={() => setDprFactor((f) => Math.min(1, f + 0.25))}
+          onFallback={() => setDprFactor((f) => Math.min(f, 0.75))}
         />
         {mode === 'walk' ? <Walkthrough plan={plan} /> : flying ? <FlyCamera plan={plan} /> : <CameraRig plan={plan} />}
         <PoseTracker offset={offset} />

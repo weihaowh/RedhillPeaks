@@ -124,7 +124,9 @@ export interface WallPiece {
 export function wallPieces(w: Wall, ceiling: number, cut?: number): WallPiece[] {
   const len = wallLength(w)
   const height = w.height ?? ceiling
-  const ext = w.thickness / 2
+  // Ends reach just short of the neighbouring wall's face (1.5 mm), so an end cap never lies in
+  // the same plane as another wall's face, which would shimmer (z-fight) as the camera moves.
+  const ext = Math.max(w.thickness / 2 - 0.0015, 0)
   const openings = [...(w.openings ?? [])].sort((a, b) => a.offset - b.offset)
   const pieces: WallPiece[] = []
   let cursor = -ext

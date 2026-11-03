@@ -1,6 +1,7 @@
 import { Component, Suspense, useMemo, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import type { FurnitureItem } from '../../types/design'
 import { FABRICS, FURNITURE_FINISHES, option } from './catalog'
 
@@ -175,6 +176,7 @@ function tinted(m: THREE.MeshStandardMaterial, t: Tints): THREE.Material {
 
 function usePrepared(file: string) {
   const { scene } = useGLTF(assetUrl(file), DRACO)
+  const anisotropy = useThree((s) => Math.min(8, s.gl.capabilities.getMaxAnisotropy()))
   return useMemo(() => {
     scene.traverse((o) => {
       const mesh = o as THREE.Mesh
@@ -182,6 +184,15 @@ function usePrepared(file: string) {
       mesh.castShadow = true
       mesh.receiveShadow = true
       for (const m of [mesh.material].flat() as THREE.MeshStandardMaterial[]) {
+        // Fine weave and grain sparkle at grazing angles without anisotropic filtering.
+        for (const tex of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap, m.aoMap]) {
+          if (tex && tex.anisotropy !== anisotropy) {
+            tex.anisotropy = anisotropy
+            tex.needsUpdate = true
+          }
+        }
+        // Overlapping glass would pop in and out as the draw order changes if it wrote depth.
+        if (m.transparent) m.depthWrite = false
         // Some scans give glass an opaque texture; make it clear so what's behind shows.
         if (/glass/i.test(m.name) && m.map) {
           m.map = null
@@ -200,7 +211,7 @@ function usePrepared(file: string) {
     })
     const box = new THREE.Box3().setFromObject(scene)
     return { scene, box, size: box.getSize(new THREE.Vector3()), centre: box.getCenter(new THREE.Vector3()) }
-  }, [scene])
+  }, [scene, anisotropy])
 }
 
 /** A model for one item, coloured and fitted into its w × h × d box (front facing +z). */
