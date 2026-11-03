@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { Axe, BrickWall, Camera, Gauge, Hammer, LogOut, Redo2, RotateCcw, Sun, Tag, Undo2 } from 'lucide-react'
+import { Axe, BrickWall, Camera, Eraser, Gauge, Hammer, LogOut, Redo2, RotateCcw, Sun, Tag, Undo2 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAppStore } from '../store/useAppStore'
 import { useDesignStore } from '../store/useDesignStore'
 import { PlanToolbar } from '../features/floorplan/PlanToolbar'
 import { SunPanel } from '../features/scene/SunPanel'
+import { ResetLayoutPanel } from '../features/renovation/ResetLayout'
 import { ScreenshotPanel } from '../features/scene/ScreenshotPanel'
 import { formatHour } from '../lib/sun'
 import { useEditorStore } from '../store/useEditorStore'
 import { BUILT_KINDS } from '../lib/renovation'
 import { finePointer } from '../features/scene/FlyCamera'
 
-type Panel = 'sun' | 'shot' | null
+type Panel = 'sun' | 'shot' | 'reset' | null
 
 const QUALITY_HINT = {
   draft: 'Fastest. Best for phones and older laptops.',
@@ -60,14 +61,17 @@ export function ViewControls() {
 
   return (
     <div ref={root}>
-      {panel && mode !== 'plan' && (
+      {panel && (mode !== 'plan' || panel === 'reset') && (
         <div className="glass absolute bottom-[4.25rem] left-1/2 z-30 -translate-x-1/2">
-          {panel === 'sun' ? <SunPanel /> : <ScreenshotPanel onDone={() => setPanel(null)} />}
+          {panel === 'reset' ? <ResetLayoutPanel onDone={() => setPanel(null)} /> : panel === 'sun' ? <SunPanel /> : <ScreenshotPanel onDone={() => setPanel(null)} />}
         </div>
       )}
       <div className="glass absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto p-1.5">
         {mode === 'plan' ? (
-          <PlanToolbar />
+          <>
+            <PlanToolbar />
+            <ResetChip on={panel === 'reset'} onClick={() => toggle('reset')} />
+          </>
         ) : (
           <>
             <button type="button" className="chip" title="Undo design change (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
@@ -97,6 +101,7 @@ export function ViewControls() {
                 )}
                 <Toggle on={tool === 'build'} onClick={() => toggleTool('build')} icon={<Hammer size={14} />} label="Build" title="Build new walls (B)" />
                 <Toggle on={tool === 'hack'} onClick={() => toggleTool('hack')} icon={<Axe size={14} />} label="Hack" title="Hack walls (H)" />
+                <ResetChip on={panel === 'reset'} onClick={() => toggle('reset')} />
                 {tool === 'build' &&
                   BUILT_KINDS.map((k) => (
                     <button key={k.id} type="button" title={k.hint} onClick={() => setBuildKind(k.id)} className={clsx('chip whitespace-nowrap', buildKind === k.id && 'chip-on')}>
@@ -134,6 +139,14 @@ export function ViewControls() {
         )}
       </div>
     </div>
+  )
+}
+
+function ResetChip({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className={clsx('chip whitespace-nowrap', on && 'chip-on')} onClick={onClick} title="Reset the furniture layout and walls">
+      <Eraser size={14} /> <span className="hidden sm:inline">Reset</span>
+    </button>
   )
 }
 

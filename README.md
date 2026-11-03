@@ -114,8 +114,8 @@ Shows the inspector for whatever is selected: a room, wall, door/window, hacked 
 
 ### Bottom toolbar
 
-- **In 2D:** the drawing tools, undo/redo, tool options, **Fit to screen** and **Upload**.
-- **In 3D:** undo/redo, **Labels**, **Structural**, **Full walls / Cutaway**, **Orbit / Fly** (desktop), **Build / Hack**, time of day, quality, screenshot, and **Reset camera**.
+- **In 2D:** the drawing tools, undo/redo, tool options, **Fit to screen**, **Upload** and **Reset** (layout and walls).
+- **In 3D:** undo/redo, **Labels**, **Structural**, **Full walls / Cutaway**, **Orbit / Fly** (desktop), **Build / Hack**, **Reset** (layout and walls), time of day, quality, screenshot, and **Reset camera**.
 
 ### Minimap (3D)
 
@@ -315,6 +315,20 @@ Select a hacked stretch (click the red area in 2D) to:
 A normal wall's inspector also has **Hack this wall** / **Keep wall** buttons.
 
 Any door or window inside a hacked stretch goes with the wall. Electrical points on a hacked wall aren't moved; the HDB checks list them so you can relocate them.
+
+### Resetting the layout and walls
+
+Click **Reset** (eraser icon) in the bottom bar, in 2D or 3D, to start the flat over. Tick what to reset:
+
+| Option | What it does |
+| --- | --- |
+| **Remove all furniture** | Clears every piece of furniture and carpentry. |
+| **Undo hacking and new walls** | Removes all hacks (walls come back) and all new walls. |
+| **Restore the original traced walls** | Puts the walls, doors, windows and rooms back as traced from the HDB plan. Only available when you've edited the Redhill Peaks trace; off by default. |
+
+- Each option shows what it will clear, e.g. *36 pieces* or *2 new walls, 1 hack*. Options with nothing to clear are greyed out.
+- Paint, floors, ceilings, feature walls and electrical points are kept. To clear finishes, use **Reset all finishes** in the whole-flat panel.
+- **Ctrl+Z** brings the furniture and walls back in one step. A restored trace undoes separately, from the 2D Plan view.
 
 ### Rules to know
 
