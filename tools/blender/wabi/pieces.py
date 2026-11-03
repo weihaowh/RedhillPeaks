@@ -58,7 +58,8 @@ def dark_glass():
 
 
 def clear_glass():
-    return plain_mat('glass', lin(0.86, 0.92, 0.9), 0.02, alpha=0.18)
+    # Low-iron glass: faintly green, a little more present than 18% so panels read as glass.
+    return plain_mat('glass', lin(0.82, 0.9, 0.87), 0.02, alpha=0.24)
 
 
 def mirror_mat():
@@ -567,12 +568,22 @@ def toilet(w=0.38, d=0.68, h=0.8):
 
 
 def shower_screen(w, h=2.0, d=0.05):
-    """Frameless glass screen: a black wall profile, floor channel and a stabiliser bar."""
+    """Fixed walk-in screen: 8 mm low-iron glass held in a slim black wall profile (on the left
+    end) and a floor channel, all within the w x d footprint. There's no stabiliser bar: which wall
+    it would brace against depends on the room, and a bar ending in mid-air looks broken."""
     glass, steel = clear_glass(), black_steel()
-    parts = [box('glass', (w, 0.008, h - 0.02), (0, 0, 0.01 + (h - 0.02) / 2), r=0.002, mat=glass)]
-    parts.append(box('profile', (0.025, 0.03, h), (-w / 2 - 0.0125, 0, h / 2), r=0.002, mat=steel))
-    parts.append(box('channel', (w, 0.025, 0.02), (0, 0, 0.01), r=0.002, mat=steel))
-    parts.append(tube_path('bar', [(w / 2 - 0.05, 0, h - 0.06), (w / 2 - 0.05, 0.45, h - 0.06)], 0.009, steel))
+    profile_w = 0.022
+    gw = w - profile_w  # glass runs from the profile to the free end
+    gx = -w / 2 + profile_w + gw / 2
+    parts = [box('glass', (gw, 0.008, h - 0.012), (gx, 0, 0.012 + (h - 0.012) / 2), r=0.0025, segments=4, mat=glass)]
+    # Wall profile: a U-channel the glass slots into, full height.
+    parts.append(box('profile', (profile_w, 0.03, h), (-w / 2 + profile_w / 2, 0, h / 2), r=0.002, mat=steel))
+    # Floor channel the glass sits in, with a rubber seal line either side of the glass.
+    parts.append(box('channel', (gw, 0.026, 0.016), (gx, 0, 0.008), r=0.002, mat=steel))
+    for sy in (-1, 1):
+        parts.append(box(f'seal{sy}', (gw - 0.004, 0.003, 0.006), (gx, sy * 0.0055, 0.019), r=0.001, mat=rubber()))
+    # Polished free edge: a hairline catch-light along the exposed vertical edge of the glass.
+    parts.append(box('edge', (0.002, 0.0075, h - 0.02), (w / 2 - 0.001, 0, 0.012 + (h - 0.012) / 2), r=0, mat=plain_mat('glass_edge', lin(0.55, 0.72, 0.66), 0.05, alpha=0.6)))
     return join('shower-screen', parts)
 
 

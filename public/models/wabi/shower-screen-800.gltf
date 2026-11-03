@@ -31,10 +31,10 @@
 			"name":"glass",
 			"pbrMetallicRoughness":{
 				"baseColorFactor":[
-					0.7105664610862732,
-					0.8275708556175232,
+					0.6382831931114197,
 					0.7874122858047485,
-					0.18000000715255737
+					0.7293471097946167,
+					0.23999999463558197
 				],
 				"metallicFactor":0,
 				"roughnessFactor":0.019999999552965164
@@ -52,6 +52,35 @@
 				],
 				"metallicFactor":0.6000000238418579,
 				"roughnessFactor":0.41999998688697815
+			}
+		},
+		{
+			"doubleSided":true,
+			"name":"rubber",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.0134117491543293,
+					0.0134117491543293,
+					0.0134117491543293,
+					1
+				],
+				"metallicFactor":0,
+				"roughnessFactor":0.699999988079071
+			}
+		},
+		{
+			"alphaMode":"BLEND",
+			"doubleSided":true,
+			"name":"glass_edge",
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.2632734179496765,
+					0.47699978947639465,
+					0.3931231200695038,
+					0.6000000238418579
+				],
+				"metallicFactor":0,
+				"roughnessFactor":0.05000000074505806
 			}
 		}
 	],
@@ -98,6 +127,46 @@
 					"indices":7,
 					"material":1,
 					"mode":4
+				},
+				{
+					"attributes":{
+						"POSITION":8,
+						"NORMAL":9,
+						"TEXCOORD_0":10
+					},
+					"extensions":{
+						"KHR_draco_mesh_compression":{
+							"bufferView":2,
+							"attributes":{
+								"POSITION":0,
+								"NORMAL":1,
+								"TEXCOORD_0":2
+							}
+						}
+					},
+					"indices":11,
+					"material":2,
+					"mode":4
+				},
+				{
+					"attributes":{
+						"POSITION":12,
+						"NORMAL":13,
+						"TEXCOORD_0":14
+					},
+					"extensions":{
+						"KHR_draco_mesh_compression":{
+							"bufferView":3,
+							"attributes":{
+								"POSITION":0,
+								"NORMAL":1,
+								"TEXCOORD_0":2
+							}
+						}
+					},
+					"indices":15,
+					"material":3,
+					"mode":4
 				}
 			]
 		}
@@ -105,80 +174,150 @@
 	"accessors":[
 		{
 			"componentType":5126,
-			"count":342,
+			"count":219,
 			"max":[
 				0.4000000059604645,
-				1.9900000095367432,
+				2,
 				0.004000000189989805
 			],
 			"min":[
-				-0.4000000059604645,
-				0.009999990463256836,
+				-0.3779999911785126,
+				0.012000024318695068,
 				-0.004000000189989805
 			],
 			"type":"VEC3"
 		},
 		{
 			"componentType":5126,
-			"count":342,
+			"count":219,
 			"type":"VEC3"
 		},
 		{
 			"componentType":5126,
-			"count":342,
+			"count":219,
 			"type":"VEC2"
 		},
 		{
 			"componentType":5123,
-			"count":1284,
+			"count":900,
 			"type":"SCALAR"
 		},
 		{
 			"componentType":5126,
-			"count":702,
+			"count":672,
 			"max":[
 				0.4000000059604645,
 				2,
 				0.014999999664723873
 			],
 			"min":[
-				-0.42499998211860657,
+				-0.4000000059604645,
 				0,
-				-0.44999998807907104
+				-0.014999999664723873
 			],
 			"type":"VEC3"
 		},
 		{
 			"componentType":5126,
-			"count":702,
+			"count":672,
 			"type":"VEC3"
 		},
 		{
 			"componentType":5126,
-			"count":702,
+			"count":672,
 			"type":"VEC2"
 		},
 		{
 			"componentType":5123,
-			"count":2640,
+			"count":2568,
+			"type":"SCALAR"
+		},
+		{
+			"componentType":5126,
+			"count":664,
+			"max":[
+				0.39800000190734863,
+				0.02199999988079071,
+				0.007000000216066837
+			],
+			"min":[
+				-0.37599998712539673,
+				0.01599999889731407,
+				-0.007000000216066837
+			],
+			"type":"VEC3"
+		},
+		{
+			"componentType":5126,
+			"count":664,
+			"type":"VEC3"
+		},
+		{
+			"componentType":5126,
+			"count":664,
+			"type":"VEC2"
+		},
+		{
+			"componentType":5123,
+			"count":2568,
+			"type":"SCALAR"
+		},
+		{
+			"componentType":5126,
+			"count":24,
+			"max":[
+				0.3999999761581421,
+				1.996000051498413,
+				0.0037499999161809683
+			],
+			"min":[
+				0.39800000190734863,
+				0.016000032424926758,
+				-0.0037499999161809683
+			],
+			"type":"VEC3"
+		},
+		{
+			"componentType":5126,
+			"count":24,
+			"type":"VEC3"
+		},
+		{
+			"componentType":5126,
+			"count":24,
+			"type":"VEC2"
+		},
+		{
+			"componentType":5123,
+			"count":36,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":1803,
+			"byteLength":1272,
 			"byteOffset":0
 		},
 		{
 			"buffer":0,
-			"byteLength":3360,
-			"byteOffset":1804
+			"byteLength":3193,
+			"byteOffset":1272
+		},
+		{
+			"buffer":0,
+			"byteLength":2918,
+			"byteOffset":4468
+		},
+		{
+			"buffer":0,
+			"byteLength":288,
+			"byteOffset":7388
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":5164,
+			"byteLength":7676,
 			"uri":"shower-screen-800.bin"
 		}
 	]

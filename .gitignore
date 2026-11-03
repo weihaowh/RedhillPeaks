@@ -8,3 +8,6 @@ Image/
 
 # Blender build cache (downloaded textures, renders)
 tools/blender/cache/
+
+# Python bytecode from the Blender build scripts
+__pycache__/
