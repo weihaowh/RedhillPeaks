@@ -96,11 +96,11 @@ export const STYLES: DesignStyle[] = [
   {
     id: 'wabi',
     name: 'Wabi-sabi',
-    blurb: 'Earthy limewash tones, screed and terrazzo. Imperfect and handmade.',
+    blurb: 'Limewash walls, screed and terrazzo with oak, washed linen and bouclé. Imperfect and handmade.',
     wall: '#d9cbb8',
     floors: { living: { finish: 'screed' }, bedroom: { finish: 'oak', size: 0.24 }, wet: { finish: 'terrazzo' } },
     wood: 'oak',
-    cabinet: 'greige',
+    cabinet: 'oak',
     fabric: 'oat',
     accent: 'olive',
   },

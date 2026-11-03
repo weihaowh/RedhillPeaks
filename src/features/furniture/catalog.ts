@@ -77,15 +77,15 @@ export const CATALOG: CatalogEntry[] = [
     variants: [{ label: '2.4 m', w: 2.4, d: 1.55, h: 0.82 }, { label: '2.7 m', w: 2.7, d: 1.65, h: 0.82 }, { label: '3.0 m', w: 3.0, d: 1.7, h: 0.82 }],
     options: [{ key: 'chaise', label: 'Chaise side', choices: [['left', 'Left'], ['right', 'Right']], default: 'left' }],
   },
-  { id: 'armchair', name: 'Armchair', category: 'Living', layer: 'floor', size: { w: 0.82, d: 0.82, h: 0.8 }, fabric: 'cream', finish: 'oak' },
+  { id: 'armchair', name: 'Armchair', category: 'Living', layer: 'floor', size: { w: 0.76, d: 0.76, h: 0.78 }, fabric: 'cream', finish: 'oak' },
   {
     id: 'coffee-table', name: 'Coffee table', category: 'Living', layer: 'floor', size: { w: 1.2, d: 0.6, h: 0.4 }, finish: 'oak', reach: true,
     variants: [{ label: '1.0 m', w: 1.0, d: 0.55, h: 0.4 }, { label: '1.2 m', w: 1.2, d: 0.6, h: 0.4 }, { label: 'Round 0.9 m', w: 0.9, d: 0.9, h: 0.38 }],
     options: [{ key: 'shape', label: 'Shape', choices: [['rect', 'Rectangle'], ['round', 'Round']], default: 'rect' }],
   },
-  { id: 'side-table', name: 'Side table', category: 'Living', layer: 'floor', size: { w: 0.45, d: 0.45, h: 0.55 }, finish: 'walnut' },
+  { id: 'side-table', name: 'Side table', category: 'Living', layer: 'floor', size: { w: 0.45, d: 0.45, h: 0.55 }, finish: 'oak' },
   {
-    id: 'tv-console', name: 'TV console', category: 'Living', layer: 'floor', size: { w: 1.8, d: 0.4, h: 0.45 }, finish: 'walnut',
+    id: 'tv-console', name: 'TV console', category: 'Living', layer: 'floor', size: { w: 1.8, d: 0.4, h: 0.45 }, finish: 'oak',
     variants: [{ label: '1.5 m', w: 1.5, d: 0.4, h: 0.45 }, { label: '1.8 m', w: 1.8, d: 0.4, h: 0.45 }, { label: '2.1 m', w: 2.1, d: 0.42, h: 0.45 }],
   },
   {
@@ -98,7 +98,7 @@ export const CATALOG: CatalogEntry[] = [
     variants: [{ label: '140×200', w: 2.0, d: 1.4, h: 0.012 }, { label: '160×230', w: 2.3, d: 1.6, h: 0.012 }, { label: '200×300', w: 3.0, d: 2.0, h: 0.012 }],
     hint: 'Pick a rug big enough that at least the front legs of the sofa and chairs sit on it.',
   },
-  { id: 'floor-lamp', name: 'Floor lamp', category: 'Living', layer: 'floor', size: { w: 0.4, d: 0.4, h: 1.6 }, finish: 'black' },
+  { id: 'floor-lamp', name: 'Floor lamp', category: 'Living', layer: 'floor', size: { w: 0.4, d: 0.4, h: 1.6 }, finish: 'oak' },
   { id: 'bookshelf', name: 'Bookshelf', category: 'Living', layer: 'floor', size: { w: 0.8, d: 0.35, h: 1.8 }, finish: 'oak' },
 
   // Dining
@@ -133,7 +133,7 @@ export const CATALOG: CatalogEntry[] = [
     variants: [{ label: '1.0 m', w: 1.0, d: 0.55, h: 0.75 }, { label: '1.2 m', w: 1.2, d: 0.6, h: 0.75 }, { label: '1.6 m', w: 1.6, d: 0.7, h: 0.75 }],
     hint: 'Put the desk side-on to the window to avoid glare on your screen.',
   },
-  { id: 'office-chair', name: 'Office chair', category: 'Study', layer: 'floor', size: { w: 0.62, d: 0.62, h: 1.05 }, fabric: 'charcoal' },
+  { id: 'office-chair', name: 'Desk chair', category: 'Study', layer: 'floor', size: { w: 0.5, d: 0.58, h: 0.95 }, fabric: 'stone', finish: 'oak' },
 
   // Kitchen
   {
@@ -171,11 +171,11 @@ export const CATALOG: CatalogEntry[] = [
     variants: [{ label: 'Small', w: 0.35, d: 0.35, h: 0.6 }, { label: 'Tall', w: 0.5, d: 0.5, h: 1.4 }],
   },
   {
-    id: 'wall-art', name: 'Wall art', category: 'Décor', layer: 'wall', size: { w: 0.9, d: 0.03, h: 0.6 }, finish: 'black', elevation: 1.25,
+    id: 'wall-art', name: 'Wall art', category: 'Décor', layer: 'wall', size: { w: 0.9, d: 0.03, h: 0.6 }, finish: 'oak', elevation: 1.25,
     variants: [{ label: '60×40', w: 0.6, d: 0.03, h: 0.4 }, { label: '90×60', w: 0.9, d: 0.03, h: 0.6 }, { label: '120×80', w: 1.2, d: 0.03, h: 0.8 }],
   },
   { id: 'wall-shelf', name: 'Floating shelf', category: 'Décor', layer: 'wall', size: { w: 1.0, d: 0.24, h: 0.03 }, finish: 'oak', elevation: 1.5, resizable: { w: [0.4, 2.4] } },
-  { id: 'mirror', name: 'Standing mirror', category: 'Décor', layer: 'floor', size: { w: 0.6, d: 0.06, h: 1.7 }, finish: 'black' },
+  { id: 'mirror', name: 'Standing mirror', category: 'Décor', layer: 'floor', size: { w: 0.6, d: 0.18, h: 1.7 }, finish: 'oak', hint: 'It leans back against the wall, so it needs about 180 mm of floor.' },
 
   // Carpentry: built-ins sized to the room
   {

@@ -433,13 +433,22 @@ Don't want to start from scratch? Open the **Layouts** tab, or select a room and
 
 Every scheme also fits out the kitchen, bathrooms, service yard and shoe cabinet.
 
+All layouts are furnished from the wabi-sabi set (see [Furniture](#furniture)):
+
+- linen sofas and bouclé tub chairs;
+- oak tables with paper-cord chairs;
+- low oak beds over jute rugs;
+- a washi floor lamp, plaster side tables and ensō wall art.
+
+At High quality they show as the detailed models, in each piece's chosen fabric and finish.
+
 ### Room-by-room options (mix and match)
 
-- **Living room:** Sofa facing the TV · L-sofa lounge with fluted TV wall · Conversation set (sofa, two armchairs, coffee table)
-- **Dining:** Table for four · Round table · Six-seater · Breakfast island with bar stools
-- **Bedroom 3:** Study · Guest room (queen) · Kid's room
-- **Bedroom 2:** Guest room · Kid's room · Home office for two
-- **Main bedroom:** Queen by the window · Bed facing a wall TV · King + reading chair
+- **Living room:** Sofa facing the TV · L-sofa lounge with fluted TV wall · Conversation set (linen sofa, two bouclé tub chairs, oak coffee table, washi lamp)
+- **Dining:** Table for four · Round pedestal table · Six-seater · Breakfast island with oak counter stools
+- **Bedroom 3:** Study · Guest room (queen over a jute rug) · Kid's room
+- **Bedroom 2:** Guest room (queen over a jute rug) · Kid's room · Home office for two
+- **Main bedroom:** Queen by the window · Bed facing a wall TV · King + bouclé reading chair (each over a jute rug)
 
 ### How they work
 

@@ -122,6 +122,14 @@ Every piece type was rendered in Cycles and reviewed for geometry, materials and
 - A hollow vessel basin.
 - A slimmer toilet seat and lid.
 
+Fitting to the app's footprints: every model stays within its catalogue width and depth. To keep it that way:
+
+- **Bed duvets** are tucked in at the sides.
+- **Fridge and washer bodies** are shallower, so their handles and door rings fit within the depth.
+- **The standing mirror** is centred on its leaning footprint, which is 180 mm deep.
+
+So the app's clearance and walkway checks match what you see.
+
 Known limits:
 
 - **Hand-modelled.** Appliances are simplified and carry no branding.

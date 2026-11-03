@@ -356,6 +356,11 @@ def bed(w, d, h=1.0, name='bed'):
     duvet = grid('duvet', dw, dd, int(dw / 0.018), int(dd / 0.018), (0, my - md / 2 + dd / 2 - 0.08, frame_h + mat_h + 0.06), white_linen())
     drape(duvet, [mattress], frames=45, thickness=0.006, quality=6, stiffness=10)
     solidify(duvet, 0.03)
+    # The hanging sides can flare out; tuck them in so the bed stays within its footprint.
+    limit = w / 2 - 0.012
+    for v in duvet.data.vertices:
+        if abs(v.co.x) > limit:
+            v.co.x = math.copysign(limit - (abs(v.co.x) - limit) * 0.15, v.co.x)
     for p in duvet.data.polygons:
         p.use_smooth = True
     box_uv(duvet, 0.4, None)
@@ -458,6 +463,12 @@ def office_chair(w=0.62, d=0.62, h=0.95):
 
 
 def fridge(w, d, h, side_by_side=False):
+    ob = _fridge(w, d - 0.03, h, side_by_side)
+    transform(ob, (0, 0.015, 0))
+    return ob
+
+
+def _fridge(w, d, h, side_by_side=False):
     """Fridge in matte appliance paint (colour set in the app), with flush doors and long pulls."""
     paint, steel, gasket = appliance_mat(), brushed_steel(), rubber()
     parts = [box('body', (w, d - 0.04, h - 0.01), (0, 0.02, (h - 0.01) / 2 + 0.01), r=0.012, mat=paint)]
@@ -500,10 +511,13 @@ def washer_unit(prefix, w, d, h, z0, dryer=False):
 
 
 def washer(w=0.6, d=0.6, h=0.85, stacked=False):
-    parts = washer_unit('w', w, d, h, 0)
+    body_d = d - 0.065  # leaves room in the footprint for the door ring
+    parts = washer_unit('w', w, body_d, h, 0)
     if stacked:
-        parts += washer_unit('d', w, d, h, h + 0.01, dryer=True)
-    return join('washer', parts)
+        parts += washer_unit('d', w, body_d, h, h + 0.01, dryer=True)
+    ob = join('washer', parts)
+    transform(ob, (0, 0.0325, 0))
+    return ob
 
 
 def vanity(w, d, h=0.85):
@@ -573,7 +587,8 @@ def standing_mirror(w=0.6, h=1.7, d=0.06):
     glass = outline_solid('glass', arch_outline(w, h, inset=0.035), 0.004, mirror_mat(), r=0, smooth=False)
     transform(glass, (0, -0.003, 0))
     ob = join('mirror', [frame, glass])
-    transform(ob, (0, 0.0, 0), (math.radians(-5), 0, 0))
+    transform(ob, (0, 0, 0), (math.radians(-5), 0, 0))
+    transform(ob, (0, -0.0885, 0))
     return ob
 
 

@@ -20,8 +20,9 @@ function restyle(item: FurnitureItem, style: DesignStyle): FurnitureItem {
   const entry = catalogEntry(item.type)
   if (!entry) return item
   const next = { ...item }
-  // Lamps, frames and plant pots keep their own finish; only wood and cabinetry change.
-  if (entry.finish && !['floor-lamp', 'wall-art', 'plant', 'mirror', 'bar-stool'].includes(item.type)) {
+  // Lamp feet, frames, the mirror and stools are oak in the detailed set, so they follow the
+  // style's wood too; only plant pots keep their own finish.
+  if (entry.finish && item.type !== 'plant') {
     next.finish = CABINETS.has(item.type) ? style.cabinet : style.wood
   }
   if (entry.fabric) next.fabric = ACCENT_SEATS.has(item.type) ? style.accent : style.fabric
